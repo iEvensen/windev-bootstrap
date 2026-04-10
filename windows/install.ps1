@@ -23,4 +23,25 @@ if (Test-Path (Split-Path $terminalSettingsPath)) {
     Write-Host "    Windows Terminal not found. Install it first, then re-run."
 }
 
+Write-Host "==> Copying repo into WSL"
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$wslUser = wsl whoami
+$wslHome = "\\wsl$\$DistroName\home\$wslUser"
+$wslDest = "$wslHome\windev-bootstrap"
+if (Test-Path $wslHome) {
+    if (Test-Path $wslDest) {
+        Write-Host "    Repo already exists in WSL at ~/windev-bootstrap, skipping copy."
+    } else {
+        Copy-Item -Path $repoRoot -Destination $wslDest -Recurse -Force
+        Write-Host "    Repo copied to WSL at ~/windev-bootstrap"
+    }
+    Write-Host ""
+    Write-Host "==> Next steps inside WSL:"
+    Write-Host "    cd ~/windev-bootstrap/wsl && ./install.sh"
+    Write-Host "    cd ~/windev-bootstrap/github && ./setup-github.sh"
+} else {
+    Write-Host "    WSL home directory not found. You may need to restart and launch Ubuntu first."
+    Write-Host "    Then manually copy or clone the repo into WSL."
+}
+
 Write-Host "==> Done. Restart your machine if WSL was just installed."

@@ -72,6 +72,7 @@ cd windev-bootstrap\windows
 .\install.ps1
 ```
 
+This will install WSL + Ubuntu, apply configs, and **copy the repo into WSL** automatically.
 Restart your machine if WSL was just installed.
 
 ### 2. Inside WSL (Ubuntu)
