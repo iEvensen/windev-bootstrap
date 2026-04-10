@@ -12,6 +12,13 @@ RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm
 # Install fzf
 RUN apt-get update && apt-get install -y fzf && rm -rf /var/lib/apt/lists/*
 
+# Install Azure CLI
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+# Install Pulumi
+RUN curl -fsSL https://get.pulumi.com | sh
+ENV PATH="/home/node/.pulumi/bin:${PATH}"
+
 USER $USERNAME
 
 # Oh My Zsh plugins (OMZ is pre-installed in Microsoft base images)

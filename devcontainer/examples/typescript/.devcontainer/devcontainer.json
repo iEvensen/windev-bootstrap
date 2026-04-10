@@ -21,6 +21,8 @@
         "esbenp.prettier-vscode",
         "ms-kubernetes-tools.vscode-kubernetes-tools",
         "ms-azuretools.vscode-docker",
+        "ms-vscode.azure-account",
+        "ms-azuretools.vscode-azureresourcegroups",
         "redhat.vscode-yaml",
         "eamodio.gitlens"
       ]
