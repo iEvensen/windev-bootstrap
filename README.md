@@ -6,7 +6,7 @@ Bootstrap a Windows + WSL2 (Ubuntu) development environment with:
 - Docker inside WSL with custom networking
 - k3d Kubernetes cluster (declarative config)
 - VS Code configuration
-- Git + GitHub CLI + SSH
+- Git + GitHub CLI + SSH/HTTPS authentication
 
 ## Structure
 
@@ -32,12 +32,12 @@ windev-bootstrap/
       k3d-dev.yaml       # Declarative k3d cluster config
       create-cluster.sh  # Create cluster from config
   github/
-    setup-github.sh      # GitHub CLI + SSH key setup
+    setup-github.sh      # GitHub CLI + SSH key + credential helper
   vscode/
     settings.json        # WSL-side VS Code settings
     extensions.txt       # VS Code extensions to install
   dotfiles/
-    .gitconfig           # Git config template
+    .gitconfig           # Git config (rebase, SSH default)
     .gitignore_global    # Global gitignore
 ```
 
@@ -61,6 +61,8 @@ cd ~/windev-bootstrap/wsl
 ```
 
 ### 3. Set up GitHub
+
+Authenticate via browser, SSH key, or PAT — the script handles all three:
 
 ```bash
 cd ~/windev-bootstrap/github
@@ -96,6 +98,14 @@ cd ~/windev-bootstrap/wsl/k3d
 
 - 1 server + 2 agents
 - Traefik disabled (bring your own ingress)
-- Port 8080 mapped to load balancer
+- Port 8080 mapped to load balancer (HTTP)
+- Port 8443 mapped to load balancer (HTTPS)
 - API on port 6550
 - Persistent storage enabled
+
+### Git
+
+- `pull.rebase = true` — clean linear history by default
+- HTTPS URLs for GitHub automatically rewritten to SSH
+- `gh` registered as git credential helper (HTTPS fallback)
+- Identity (name/email) prompted at setup time — not stored in repo

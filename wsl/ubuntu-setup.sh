@@ -39,4 +39,14 @@ ln -sf "$REPO_ROOT/dotfiles/.gitignore_global" "$HOME/.gitignore_global"
 echo "==> Git global ignore"
 git config --global core.excludesfile "$HOME/.gitignore_global"
 
+echo "==> Configuring git identity"
+if [ -z "$(git config --global user.name)" ]; then
+  read -rp "Git user name: " GIT_NAME
+  git config --global user.name "$GIT_NAME"
+fi
+if [ -z "$(git config --global user.email)" ]; then
+  read -rp "Git email: " GIT_EMAIL
+  git config --global user.email "$GIT_EMAIL"
+fi
+
 echo "==> Done."
