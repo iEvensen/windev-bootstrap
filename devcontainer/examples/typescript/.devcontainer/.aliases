@@ -1,0 +1,8 @@
+alias k="kubectl"
+alias kgp="kubectl get pods"
+alias kgs="kubectl get svc"
+alias d="docker"
+alias dc="docker compose"
+alias nr="npm run"
+alias ni="npm install"
+alias nt="npm test"

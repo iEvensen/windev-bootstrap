@@ -2,43 +2,64 @@
 
 Bootstrap a Windows + WSL2 (Ubuntu) development environment with:
 
-- zsh + Oh My Zsh
 - Docker inside WSL with custom networking
 - k3d Kubernetes cluster (declarative config)
-- VS Code configuration
+- VS Code Dev Containers (per-project tooling)
+- zsh + Oh My Zsh (inside containers)
 - Git + GitHub CLI + SSH/HTTPS authentication
+
+## Architecture
+
+WSL Ubuntu stays thin — just Docker + k3d. All dev tooling lives in Dev Containers:
+
+```
+Windows
+└── WSL2 Ubuntu (host)
+    ├── Docker engine
+    ├── k3d cluster
+    ├── SSH keys + git config
+    └── Dev Containers (per project)
+        ├── zsh + Oh My Zsh + plugins
+        ├── kubectl, helm
+        ├── Language tooling (.NET / Node / etc.)
+        └── VS Code extensions
+```
 
 ## Structure
 
 ```
 windev-bootstrap/
   windows/
-    install.ps1            # Windows bootstrap (WSL, winget, VS Code, Terminal)
-    .wslconfig             # WSL2 resource & networking config
-    winget-packages.json   # Windows packages to install
-    vscode-settings.json   # Windows-side VS Code settings
-    terminal-settings.json # Windows Terminal settings (Dracula + JetBrainsMono)
+    install.ps1              # Windows bootstrap (WSL, winget, VS Code, Terminal)
+    .wslconfig               # WSL2 resource & networking config
+    winget-packages.json     # Windows packages to install
+    vscode-settings.json     # Windows-side VS Code settings
+    terminal-settings.json   # Windows Terminal settings (Dracula + JetBrainsMono)
   wsl/
-    install.sh           # WSL entry point
-    ubuntu-setup.sh      # Docker, k3d, kubectl, zsh, dotfiles
-    zsh/
-      install-zsh.sh     # Oh My Zsh + plugins
-      .zshrc             # zsh config
-      .aliases           # Shell aliases
+    install.sh               # WSL entry point (Docker + k3d only)
+    ubuntu-setup.sh          # Docker engine, k3d, kubectl, git config
     docker/
-      daemon.json        # Custom Docker networking
-      network-setup.sh   # Restart Docker & verify
+      daemon.json            # Custom Docker networking
+      network-setup.sh       # Restart Docker & verify
     k3d/
-      k3d-dev.yaml       # Declarative k3d cluster config
-      create-cluster.sh  # Create cluster from config
+      k3d-dev.yaml           # Declarative k3d cluster config
+      create-cluster.sh      # Create cluster from config
   github/
-    setup-github.sh      # GitHub CLI + SSH key + credential helper
+    setup-github.sh          # GitHub CLI + SSH key + credential helper
+  devcontainer/
+    Dockerfile.base          # Base dev container (zsh, kubectl, helm)
+    zsh/
+      .zshrc                 # Shared zsh config
+      .aliases               # Shared shell aliases
+    examples/
+      dotnet/.devcontainer/  # .NET dev container template
+      typescript/.devcontainer/  # TypeScript dev container template
   vscode/
-    settings.json        # WSL-side VS Code settings
-    extensions.txt       # VS Code extensions to install
+    settings.json            # VS Code settings reference
+    extensions.txt           # VS Code extensions reference
   dotfiles/
-    .gitconfig           # Git config (rebase, SSH default)
-    .gitignore_global    # Global gitignore
+    .gitconfig               # Git config (rebase, SSH default)
+    .gitignore_global        # Global gitignore
 ```
 
 ## Usage
@@ -75,6 +96,26 @@ cd ~/windev-bootstrap/github
 cd ~/windev-bootstrap/wsl/k3d
 ./create-cluster.sh
 ```
+
+### 5. Use Dev Containers in your projects
+
+Copy a template into your project:
+
+```bash
+# For a .NET project
+cp -r ~/windev-bootstrap/devcontainer/examples/dotnet/.devcontainer/ ~/projects/my-dotnet-api/
+
+# For a TypeScript project
+cp -r ~/windev-bootstrap/devcontainer/examples/typescript/.devcontainer/ ~/projects/my-ts-app/
+```
+
+Then in VS Code: open the project folder and select **"Reopen in Container"**.
+
+Each container gets:
+- zsh + Oh My Zsh + all plugins
+- kubectl + helm (connected to k3d cluster on host)
+- Docker CLI (via Docker socket mount)
+- Language-specific tooling and VS Code extensions
 
 ## Configuration
 

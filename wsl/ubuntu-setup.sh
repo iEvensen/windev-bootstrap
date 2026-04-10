@@ -29,9 +29,6 @@ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stabl
 chmod +x kubectl
 sudo mv kubectl /usr/local/bin/kubectl
 
-echo "==> Setting up zsh"
-bash "$REPO_ROOT/wsl/zsh/install-zsh.sh"
-
 echo "==> Linking dotfiles"
 ln -sf "$REPO_ROOT/dotfiles/.gitconfig" "$HOME/.gitconfig"
 ln -sf "$REPO_ROOT/dotfiles/.gitignore_global" "$HOME/.gitignore_global"
