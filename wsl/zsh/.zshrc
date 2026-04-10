@@ -14,6 +14,10 @@ plugins=(
   docker
   zsh-autosuggestions
   zsh-syntax-highlighting
+  fast-syntax-highlighting
+  fzf
+  zsh-interactive-cd
+  zsh-substring-search
 )
 
 source $ZSH/oh-my-zsh.sh
