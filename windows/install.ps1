@@ -5,55 +5,108 @@ Param(
 $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Error "This script must be run as Administrator to install packages and configure WSL. Please restart PowerShell as Admin."
-    exit
+    exit 1
 }
 
+# Resolve the invoking user's profile paths (correct even when elevated via runas)
+$OriginalUserProfile = (Get-CimInstance Win32_UserProfile | Where-Object {
+    $_.SID -eq ([System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value)
+}).LocalPath
+$OriginalAppData = "$OriginalUserProfile\AppData\Roaming"
+$OriginalLocalAppData = "$OriginalUserProfile\AppData\Local"
+
+# Verify WSL is available
+if (-not (Get-Command wsl -ErrorAction SilentlyContinue)) {
+    Write-Error "WSL is not installed. Please install WSL first: wsl --install --no-distribution"
+    exit 1
+}
+
+# --- Prompts ---
 $WSL_USER = Read-Host "Enter desired WSL username"
+if ($WSL_USER -notmatch '^[a-z_][a-z0-9_-]*$') {
+    Write-Error "Invalid username. Use only lowercase letters, digits, underscores, and hyphens."
+    exit 1
+}
 $WSL_PASS = Read-Host "Enter desired WSL password" -AsSecureString
 $GH_PAT = Read-Host "Enter your GitHub Personal Access Token" -AsSecureString
+
+# Convert secure strings and release BSTRs
 $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($WSL_PASS)
 $PlainPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+[System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+
 $BSTR_GH = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($GH_PAT)
 $PlainToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR_GH)
+[System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR_GH)
 
+# Set env vars for WSLENV passthrough into WSL
 $env:WSL_USER = $WSL_USER
 $env:WSL_PASS = $PlainPass
 $env:GH_PAT = $PlainToken
-
 $env:WSLENV = "WSL_USER/u:WSL_PASS/u:GH_PAT/u"
 
-Write-Host "==> Applying .wslconfig"
-Copy-Item -Path ".\.wslconfig" -Destination "$env:USERPROFILE\.wslconfig" -Force
+# --- .wslconfig ---
+Write-Host "`n==> Applying .wslconfig"
+Copy-Item -Path ".\.wslconfig" -Destination "$OriginalUserProfile\.wslconfig" -Force
 
-Write-Host "==> Installing WSL and Ubuntu"
+# --- Install distro (WSL feature must already be installed) ---
+Write-Host "`n==> Installing $DistroName distro"
 wsl --install -d $DistroName --no-launch
 
-Write-Host "==> Initializing WSL user..."
-wsl -d $DistroName -u root bash -c "useradd -m -G sudo -s /bin/bash ${WSL_USER} && echo '${WSL_USER}:${PlainPass}' | chpasswd"
+# --- Create WSL user ---
+Write-Host "`n==> Initializing WSL user..."
+wsl -d $DistroName -u root bash -c 'useradd -m -G sudo -s /bin/bash "$WSL_USER" && echo "$WSL_USER:$WSL_PASS" | chpasswd'
+wsl -d $DistroName -u root bash -c 'printf "[user]\ndefault=%s\n" "$WSL_USER" > /etc/wsl.conf'
 
-wsl -d $DistroName -u root bash -c "echo -e '[user]\ndefault=$WSL_USER' > /etc/wsl.conf"
+# Restart distro so wsl.conf default user takes effect
+wsl --terminate $DistroName
 
-Write-Host "==> Installing packages via winget"
+# --- Winget packages ---
+Write-Host "`n==> Installing packages via winget"
 winget import .\winget-packages.json --accept-package-agreements --accept-source-agreements --disable-interactivity --no-upgrade
 
-Write-Host "==> VS Code WSL extension"
+# --- VS Code Remote-WSL extension (other extensions install inside WSL) ---
+Write-Host "`n==> Installing VS Code Remote-WSL extension"
 code --install-extension ms-vscode-remote.remote-wsl --force
 
-Write-Host "==> Applying Windows Terminal settings"
-$terminalSettingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+# --- VS Code Windows settings ---
+Write-Host "`n==> Applying VS Code Windows settings"
+$vscodeSettingsDir = "$OriginalAppData\Code\User"
+$vscodeSettingsFile = "$vscodeSettingsDir\settings.json"
+if (Test-Path $vscodeSettingsDir) {
+    $newSettings = Get-Content ".\vscode-settings.json" -Raw | ConvertFrom-Json
+    if (Test-Path $vscodeSettingsFile) {
+        $existing = Get-Content $vscodeSettingsFile -Raw | ConvertFrom-Json
+    } else {
+        $existing = New-Object PSObject
+    }
+    foreach ($prop in $newSettings.PSObject.Properties) {
+        $existing | Add-Member -MemberType NoteProperty -Name $prop.Name -Value $prop.Value -Force
+    }
+    $existing | ConvertTo-Json -Depth 10 | Set-Content $vscodeSettingsFile -Encoding UTF8
+    Write-Host "    VS Code settings merged."
+} else {
+    Write-Host "    VS Code settings directory not found. Open VS Code once, then re-run this step."
+}
+
+# --- Windows Terminal settings ---
+Write-Host "`n==> Applying Windows Terminal settings"
+$terminalSettingsPath = "$OriginalLocalAppData\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
 if (Test-Path (Split-Path $terminalSettingsPath)) {
     Copy-Item -Path ".\terminal-settings.json" -Destination $terminalSettingsPath -Force
     Write-Host "    Windows Terminal settings applied."
 } else {
-    Write-Host "    Windows Terminal not found. Install it first, then re-run."
+    Write-Host "    Windows Terminal not found. It will be installed by winget; re-run to apply settings."
 }
 
-Write-Host "==> Copying repo into WSL"
+# --- Copy repo into WSL ---
+Write-Host "`n==> Copying repo into WSL"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $wslHome = "\\wsl$\$DistroName\home\$WSL_USER"
 $wslDest = "$wslHome\windev-bootstrap"
 
-Start-Sleep -Seconds 3
+# Ensure distro is running before accessing UNC path
+wsl -d $DistroName echo "WSL is ready" 2>&1 | Out-Null
 
 if (Test-Path $wslHome) {
     if (Test-Path $wslDest) {
@@ -62,18 +115,33 @@ if (Test-Path $wslHome) {
         Copy-Item -Path $repoRoot -Destination $wslDest -Recurse -Force
         Write-Host "    Repo copied to WSL at ~/windev-bootstrap"
     }
-    Write-Host ""
-    Write-Host "==> Next steps inside WSL:"
-    Write-Host "    cd ~/windev-bootstrap/wsl && ./install.sh"
-    Write-Host "    cd ~/windev-bootstrap/github && ./setup-github.sh"
+
+    # Fix ownership (Copy-Item via UNC creates files owned by root)
+    Write-Host "`n==> Fixing file ownership in WSL"
+    wsl -d $DistroName -u root bash -c 'chown -R "$WSL_USER:$WSL_USER" "/home/$WSL_USER/windev-bootstrap"'
+
+    # Make scripts executable
+    wsl -d $DistroName -u $WSL_USER bash -c 'chmod +x ~/windev-bootstrap/wsl/install.sh ~/windev-bootstrap/wsl/ubuntu-setup.sh ~/windev-bootstrap/github/setup-github.sh ~/windev-bootstrap/wsl/k3d/create-cluster.sh ~/windev-bootstrap/wsl/docker/network-setup.sh'
+
+    # Run WSL setup (apt packages, docker, k3d, kubectl, dotfiles, git config)
+    Write-Host "`n==> Running WSL setup scripts..."
+    wsl -d $DistroName -u $WSL_USER bash -c 'cd ~/windev-bootstrap && ./wsl/install.sh'
+
+    # Run GitHub setup (gh CLI, auth with PAT, SSH key)
+    Write-Host "`n==> Running GitHub setup..."
+    wsl -d $DistroName -u $WSL_USER bash -c 'cd ~/windev-bootstrap && ./github/setup-github.sh'
 } else {
-    Write-Host "    WSL home directory not found. You may need to restart and launch Ubuntu first."
-    Write-Host "    Then manually copy or clone the repo into WSL."
+    Write-Host "    WSL home directory not found. Ensure the distro is installed and running."
+    exit 1
 }
 
-Write-Host "==> Done. Restart your machine if WSL was just installed."
-
-$plainPass = $null
-$plainToken = $null
+# --- Cleanup ---
+Write-Host "`n==> Cleaning up credentials from environment"
+$PlainPass = $null
+$PlainToken = $null
+$env:WSL_USER = $null
 $env:WSL_PASS = $null
 $env:GH_PAT = $null
+$env:WSLENV = $null
+
+Write-Host "`n==> Setup complete! Restart Windows Terminal to apply all settings."

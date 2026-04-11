@@ -1,11 +1,5 @@
 {
   "editor.fontFamily": "Fira Code, Consolas, 'Courier New', monospace",
   "editor.fontLigatures": true,
-  "terminal.integrated.defaultProfile.windows": "WSL",
-  "terminal.integrated.profiles.windows": {
-    "WSL": {
-      "path": "wsl.exe",
-      "args": []
-    }
-  }
+  "terminal.integrated.defaultProfile.windows": "PowerShell"
 }
