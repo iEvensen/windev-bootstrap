@@ -163,7 +163,7 @@ Each container gets:
 
 ### k3d Cluster
 
-- Image: `rancher/k3s:v1.29.0-k3s1`
+- Image: `rancher/k3s:v1.35.3-k3s1`
 - 1 server + 2 agents
 - Traefik disabled (bring your own ingress)
 - Port 8080 mapped to load balancer (HTTP)

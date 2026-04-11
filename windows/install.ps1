@@ -59,13 +59,18 @@ Copy-Item -Path ".\.wslconfig" -Destination "$OriginalUserProfile\.wslconfig" -F
 # --- Install distro (WSL feature must already be installed) ---
 Write-Host "`n==> Installing $DistroName distro"
 wsl --install -d $DistroName --no-launch
+if ($LASTEXITCODE -ne 0) { Write-Error "Failed to install $DistroName distro."; exit 1 }
 
 # --- Create WSL user ---
 Write-Host "`n==> Initializing WSL user..."
-wsl -d $DistroName -u root bash -c 'useradd -m -G sudo -s /bin/bash "$WSL_USER" && echo "$WSL_USER:$WSL_PASS" | chpasswd'
+wsl -d $DistroName -u root -- useradd -m -G sudo -s /bin/bash $WSL_USER
+wsl -d $DistroName -u root -- bash -c "echo '${WSL_USER}:${PlainPass}' | chpasswd"
+wsl -d $DistroName -u root -- bash -c "echo '${WSL_USER} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/${WSL_USER} && chmod 440 /etc/sudoers.d/${WSL_USER}"
+if ($LASTEXITCODE -ne 0) { Write-Error "Failed to create WSL user."; exit 1 }
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $wslConf = (Get-Content "$repoRoot\wsl\wsl.conf" -Raw) -replace 'WSLUSERPLACEHOLDER', $WSL_USER
 $wslConf | wsl -d $DistroName -u root tee /etc/wsl.conf > $null
+if ($LASTEXITCODE -ne 0) { Write-Error "Failed to write wsl.conf."; exit 1 }
 
 # Restart distro so wsl.conf (default user + systemd) takes effect
 wsl --terminate $DistroName
@@ -111,11 +116,27 @@ if (Test-Path (Split-Path $terminalSettingsPath)) {
 # --- Copy repo into WSL ---
 Write-Host "`n==> Copying repo into WSL"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$wslHome = "\\wsl$\$DistroName\home\$WSL_USER"
-$wslDest = "$wslHome\windev-bootstrap"
+$wslHome = $null
+$wslDest = $null
 
 # Ensure distro is running before accessing UNC path
-wsl -d $DistroName echo "WSL is ready" 2>&1 | Out-Null
+Write-Host "    Starting WSL distro..."
+wsl -d $DistroName -- echo "WSL is ready"
+
+# Try both UNC paths (\\wsl.localhost\ is preferred on newer Windows builds)
+foreach ($uncRoot in @("\\wsl.localhost", "\\wsl$")) {
+    $candidate = "$uncRoot\$DistroName\home\$WSL_USER"
+    if (Test-Path $candidate) {
+        $wslHome = $candidate
+        $wslDest = "$wslHome\windev-bootstrap"
+        break
+    }
+}
+
+if (-not $wslHome) {
+    Write-Error "WSL home directory not found. Ensure the distro is installed and the user '$WSL_USER' exists."
+    exit 1
+}
 
 if (Test-Path $wslHome) {
     if (Test-Path $wslDest) {
@@ -128,9 +149,11 @@ if (Test-Path $wslHome) {
     # Fix ownership (Copy-Item via UNC creates files owned by root)
     Write-Host "`n==> Fixing file ownership in WSL"
     wsl -d $DistroName -u root bash -c 'chown -R "$WSL_USER:$WSL_USER" "/home/$WSL_USER/windev-bootstrap"'
+    if ($LASTEXITCODE -ne 0) { Write-Error "Failed to fix file ownership."; exit 1 }
 
     # Make scripts executable
     wsl -d $DistroName -u $WSL_USER bash -c 'chmod +x ~/windev-bootstrap/wsl/install.sh ~/windev-bootstrap/wsl/ubuntu-setup.sh ~/windev-bootstrap/github/setup-github.sh ~/windev-bootstrap/wsl/k3d/create-cluster.sh ~/windev-bootstrap/wsl/docker/network-setup.sh'
+    if ($LASTEXITCODE -ne 0) { Write-Error "Failed to make scripts executable."; exit 1 }
 
     # Shutdown WSL so systemd boots as PID 1 on next launch
     Write-Host "`n==> Restarting WSL for systemd..."
@@ -139,13 +162,12 @@ if (Test-Path $wslHome) {
     # Run WSL setup (apt packages, docker, k3d, kubectl, dotfiles, git config)
     Write-Host "`n==> Running WSL setup scripts..."
     wsl -d $DistroName -u $WSL_USER bash -c 'cd ~/windev-bootstrap && ./wsl/install.sh'
+    if ($LASTEXITCODE -ne 0) { Write-Error "WSL setup failed."; exit 1 }
 
     # Run GitHub setup (gh CLI, auth with PAT, SSH key)
     Write-Host "`n==> Running GitHub setup..."
     wsl -d $DistroName -u $WSL_USER bash -c 'cd ~/windev-bootstrap && ./github/setup-github.sh'
-} else {
-    Write-Host "    WSL home directory not found. Ensure the distro is installed and running."
-    exit 1
+    if ($LASTEXITCODE -ne 0) { Write-Error "GitHub setup failed."; exit 1 }
 }
 
 # --- Cleanup ---
