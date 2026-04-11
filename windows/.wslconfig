@@ -2,7 +2,9 @@
 memory=12GB
 swap=12GB
 processors=8
-localhostForwarding=true
+#localhostForwarding=true
 networkingMode=mirrored
 dnsTunneling=true
+
+[experimental]
 autoMemoryReclaim=gradual
