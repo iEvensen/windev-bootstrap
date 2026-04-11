@@ -18,7 +18,7 @@ Write-Host "==> Installing WSL and Ubuntu"
 wsl --install -d $DistroName --no-launch
 
 Write-Host "==> Initializing WSL user..."
-wsl -d $DistroName -u root bash -c "useradd -m -G sudo -s /bin/bash $WSL_USER && echo '$WSL_USER:$PlainPass' | chpasswd"
+wsl -d $DistroName -u root bash -c "useradd -m -G sudo -s /bin/bash ${WSL_USER} && echo '${WSL_USER}:${PlainPass}' | chpasswd"
 
 wsl -d $DistroName -u root bash -c "echo -e '[user]\ndefault=$WSL_USER' > /etc/wsl.conf"
 
