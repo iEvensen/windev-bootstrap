@@ -22,7 +22,7 @@ RUN git clone https://github.com/zsh-users/zsh-autosuggestions \
     && git clone https://github.com/zdharma-continuum/fast-syntax-highlighting.git \
        ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting \
     && git clone https://github.com/zsh-users/zsh-history-substring-search.git \
-       ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-substring-search
+       ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-history-substring-search
 
 COPY --chown=$USERNAME:$USERNAME .zshrc /home/$USERNAME/.zshrc
 COPY --chown=$USERNAME:$USERNAME .aliases /home/$USERNAME/.aliases

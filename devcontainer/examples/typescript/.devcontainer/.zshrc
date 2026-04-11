@@ -19,7 +19,7 @@ plugins=(
   fast-syntax-highlighting
   fzf
   zsh-interactive-cd
-  zsh-substring-search
+  zsh-history-substring-search
 )
 
 source $ZSH/oh-my-zsh.sh

@@ -15,7 +15,7 @@ typeset -A custom_plugins=(
   [zsh-autosuggestions]=https://github.com/zsh-users/zsh-autosuggestions
   [zsh-syntax-highlighting]=https://github.com/zsh-users/zsh-syntax-highlighting
   [fast-syntax-highlighting]=https://github.com/zdharma-continuum/fast-syntax-highlighting
-  [zsh-substring-search]=https://github.com/zsh-users/zsh-history-substring-search
+  [zsh-history-substring-search]=https://github.com/zsh-users/zsh-history-substring-search
 )
 
 for plugin repo in "${(@kv)custom_plugins}"; do
@@ -34,7 +34,7 @@ plugins=(
   fast-syntax-highlighting
   fzf
   zsh-interactive-cd
-  zsh-substring-search
+  zsh-history-substring-search
 )
 
 source $ZSH/oh-my-zsh.sh

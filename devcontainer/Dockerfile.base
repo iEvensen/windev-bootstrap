@@ -37,7 +37,7 @@ RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master
     && git clone https://github.com/zdharma-continuum/fast-syntax-highlighting.git \
        ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting \
     && git clone https://github.com/zsh-users/zsh-history-substring-search.git \
-       ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-substring-search
+       ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-history-substring-search
 
 # Copy zsh config
 COPY --chown=$USERNAME:$USERNAME zsh/.zshrc /home/$USERNAME/.zshrc
