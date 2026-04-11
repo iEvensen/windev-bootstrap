@@ -6,7 +6,7 @@ Write-Host "==> Applying .wslconfig"
 Copy-Item -Path ".\.wslconfig" -Destination "$env:USERPROFILE\.wslconfig" -Force
 
 Write-Host "==> Installing WSL and Ubuntu"
-wsl --install -d $DistroName
+wsl --install -d $DistroName --no-launch
 
 Write-Host "==> Installing packages via winget"
 winget import .\winget-packages.json --accept-package-agreements --accept-source-agreements
