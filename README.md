@@ -7,22 +7,42 @@ Bootstrap a Windows + WSL2 (Ubuntu) development environment with:
 - VS Code Dev Containers (per-project tooling)
 - zsh + Oh My Zsh (inside containers)
 - Git + GitHub CLI + SSH/HTTPS authentication
+- Shared VS Code settings and extensions across host, WSL, and dev containers
+
+## Prerequisites
+
+- Windows with WSL feature enabled (`wsl --install --no-distribution`)
+- A GitHub Personal Access Token (with `admin:public_key` scope for SSH key upload)
 
 ## Architecture
 
 WSL Ubuntu stays thin — just Docker + k3d. All dev tooling lives in Dev Containers:
 
 ```
-Windows
-└── WSL2 Ubuntu (host)
+Windows (host)
+├── VS Code + Remote-WSL extension
+├── Windows Terminal (Dracula + JetBrainsMono)
+├── Git, GitHub CLI (via winget)
+└── WSL2 Ubuntu
     ├── Docker engine
     ├── k3d cluster
-    ├── SSH keys + git config
+    ├── SSH keys + git config (symlinked from dotfiles/)
+    ├── VS Code Server (settings + extensions from vscode/)
     └── Dev Containers (per project)
         ├── zsh + Oh My Zsh + plugins
         ├── kubectl, helm
         ├── Language tooling (.NET / Node / etc.)
-        └── VS Code extensions
+        └── VS Code extensions (inherits WSL settings + container-specific)
+```
+
+### VS Code Settings Inheritance
+
+```
+vscode/settings.json (single source of truth)
+├── Windows host  →  merged into %APPDATA%\Code\User\settings.json
+├── WSL distro    →  copied to ~/.vscode-server/data/Machine/settings.json
+└── Dev containers →  inherited from WSL user settings automatically
+                      devcontainer.json only adds container-specific extensions
 ```
 
 ## Structure
@@ -30,14 +50,14 @@ Windows
 ```
 windev-bootstrap/
   windows/
-    install.ps1              # Windows bootstrap (WSL, winget, VS Code, Terminal)
+    install.ps1              # Windows bootstrap — runs everything from one script
     .wslconfig               # WSL2 resource & networking config
-    winget-packages.json     # Windows packages to install
-    vscode-settings.json     # Windows-side VS Code settings
+    winget-packages.json     # Windows packages (Terminal, VS Code, Git, gh CLI)
+    vscode-settings.json     # Windows-side VS Code settings (merged, not overwritten)
     terminal-settings.json   # Windows Terminal settings (Dracula + JetBrainsMono)
   wsl/
-    install.sh               # WSL entry point (Docker + k3d only)
-    ubuntu-setup.sh          # Docker engine, k3d, kubectl, git config
+    install.sh               # WSL entry point (apt base packages → ubuntu-setup.sh)
+    ubuntu-setup.sh          # Docker, k3d, kubectl, dotfiles, VS Code settings/extensions
     docker/
       daemon.json            # Custom Docker networking
       network-setup.sh       # Restart Docker & verify
@@ -45,7 +65,7 @@ windev-bootstrap/
       k3d-dev.yaml           # Declarative k3d cluster config
       create-cluster.sh      # Create cluster from config
   github/
-    setup-github.sh          # GitHub CLI + SSH key + credential helper
+    setup-github.sh          # GitHub CLI + auth (PAT or interactive) + SSH key
   devcontainer/
     Dockerfile.base          # Base dev container (zsh, kubectl, helm)
     zsh/
@@ -55,16 +75,22 @@ windev-bootstrap/
       dotnet/.devcontainer/  # .NET dev container template
       typescript/.devcontainer/  # TypeScript dev container template
   vscode/
-    settings.json            # VS Code settings reference
-    extensions.txt           # VS Code extensions reference
+    settings.json            # Base VS Code settings (applied to WSL + inherited by containers)
+    extensions.txt           # VS Code extensions (installed in WSL)
   dotfiles/
-    .gitconfig               # Git config (rebase, SSH default)
+    .gitconfig               # Git config (identity, rebase, SSH default)
     .gitignore_global        # Global gitignore
 ```
 
 ## Usage
 
-### 1. On Windows
+### 1. Before you start
+
+1. Edit `dotfiles/.gitconfig` — set your `name` and `email` under `[user]`
+2. Ensure WSL is installed: `wsl --install --no-distribution` (reboot if needed)
+3. Have a GitHub PAT ready
+
+### 2. Run the bootstrap
 
 ```powershell
 git clone https://github.com/iEvensen/windev-bootstrap.git
@@ -72,33 +98,23 @@ cd windev-bootstrap\windows
 .\install.ps1
 ```
 
-This will install WSL + Ubuntu, apply configs, and **copy the repo into WSL** automatically.
-Restart your machine if WSL was just installed.
+The script will prompt for:
+- **WSL username** and **password**
+- **GitHub Personal Access Token**
 
-### 2. Inside WSL (Ubuntu)
+Then it automatically:
+1. Applies `.wslconfig` to the Windows host
+2. Installs the Ubuntu distro and creates your WSL user
+3. Installs Windows packages via winget (Terminal, VS Code, Git, gh)
+4. Installs the VS Code Remote-WSL extension on the host
+5. Merges `vscode-settings.json` into Windows VS Code settings
+6. Applies Windows Terminal settings
+7. Copies the repo into WSL and fixes file ownership
+8. Runs WSL setup (apt packages, Docker, k3d, kubectl, k3d cluster, dotfiles)
+9. Applies VS Code settings and installs extensions inside WSL
+10. Runs GitHub setup (gh auth with PAT, SSH key generation, credential helper)
 
-```bash
-cd ~/windev-bootstrap/wsl
-./install.sh
-```
-
-### 3. Set up GitHub
-
-Authenticate via browser, SSH key, or PAT — the script handles all three:
-
-```bash
-cd ~/windev-bootstrap/github
-./setup-github.sh
-```
-
-### 4. Create k3d cluster
-
-```bash
-cd ~/windev-bootstrap/wsl/k3d
-./create-cluster.sh
-```
-
-### 5. Use Dev Containers in your projects
+### 3. Use Dev Containers in your projects
 
 Copy a template into your project:
 
@@ -117,10 +133,11 @@ Each container gets:
 - kubectl + helm (connected to k3d cluster on host)
 - Docker CLI (via Docker socket mount)
 - Language-specific tooling and VS Code extensions
+- VS Code settings inherited from WSL
 
 ## Configuration
 
-### WSL2 Resources (32GB RAM machine)
+### WSL2 Resources
 
 | Setting | Value | Purpose |
 |---------|-------|---------|
@@ -150,4 +167,4 @@ Each container gets:
 - `pull.rebase = true` — clean linear history by default
 - HTTPS URLs for GitHub automatically rewritten to SSH
 - `gh` registered as git credential helper (HTTPS fallback)
-- Identity (name/email) prompted at setup time — not stored in repo
+- Identity (name/email) configured in `dotfiles/.gitconfig`
