@@ -53,6 +53,11 @@ sudo mkdir -p /var/lib/k3d/dev
 echo "==> Creating k3d cluster"
 sg docker -c "bash \"$REPO_ROOT/wsl/k3d/create-cluster.sh\""
 
+echo "==> Enabling k3d cluster auto-start on boot"
+sudo cp "$REPO_ROOT/wsl/k3d/k3d-dev-cluster.service" /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable k3d-dev-cluster.service
+
 echo "==> Creating project directories"
 mkdir -p "$HOME/projects/workspace"
 
