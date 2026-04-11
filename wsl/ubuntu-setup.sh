@@ -56,9 +56,20 @@ sg docker -c "bash \"$REPO_ROOT/wsl/k3d/create-cluster.sh\""
 echo "==> Creating project directories"
 mkdir -p "$HOME/projects/workspace"
 
+echo "==> Installing zsh"
+sudo apt install -y zsh
+sudo chsh -s "$(which zsh)" "$USER"
+
+echo "==> Installing oh-my-zsh"
+if [ ! -d "$HOME/.oh-my-zsh" ]; then
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+fi
+
 echo "==> Linking dotfiles"
 ln -sf "$REPO_ROOT/dotfiles/.gitconfig" "$HOME/.gitconfig"
 ln -sf "$REPO_ROOT/dotfiles/.gitignore_global" "$HOME/.gitignore_global"
+ln -sf "$REPO_ROOT/devcontainer/zsh/.zshrc" "$HOME/.zshrc"
+ln -sf "$REPO_ROOT/devcontainer/zsh/.aliases" "$HOME/.aliases"
 
 echo "==> Git global ignore"
 git config --global core.excludesfile "$HOME/.gitignore_global"
