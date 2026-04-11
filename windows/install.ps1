@@ -1,3 +1,9 @@
+$currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Error "This script must be run as Administrator to install packages and configure WSL. Please restart PowerShell as Admin."
+    exit
+}
+
 Param(
     [string]$DistroName = "Ubuntu"
 )
