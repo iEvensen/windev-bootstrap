@@ -13,9 +13,6 @@
   ],
   "customizations": {
     "vscode": {
-      "settings": {
-        "terminal.integrated.defaultProfile.linux": "zsh"
-      },
       "extensions": [
         "ms-dotnettools.csdevkit",
         "ms-dotnettools.csharp",

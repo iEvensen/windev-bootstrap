@@ -1,3 +1,7 @@
+[user]
+  name = Idar Evensen
+  email = Idar.Evensen@gmail.com
+
 [core]
   editor = code --wait
   excludesfile = ~/.gitignore_global

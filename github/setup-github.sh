@@ -13,9 +13,14 @@ if ! command -v gh &>/dev/null; then
   sudo apt install -y gh
 fi
 
-echo "==> gh auth login (interactive)"
-echo "    You can authenticate via browser, SSH key, or paste a PAT."
-gh auth login
+if [ -n "${GH_PAT:-}" ]; then
+  echo "==> gh auth login (using PAT from environment)"
+  echo "$GH_PAT" | gh auth login --with-token
+else
+  echo "==> gh auth login (interactive)"
+  echo "    You can authenticate via browser, SSH key, or paste a PAT."
+  gh auth login
+fi
 
 echo "==> Configuring gh as git credential helper (HTTPS)"
 gh auth setup-git

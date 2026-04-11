@@ -29,6 +29,9 @@ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stabl
 chmod +x kubectl
 sudo mv kubectl /usr/local/bin/kubectl
 
+echo "==> Creating k3d cluster"
+bash "$REPO_ROOT/wsl/k3d/create-cluster.sh"
+
 echo "==> Creating project directories"
 mkdir -p "$HOME/projects/workspace"
 
@@ -39,14 +42,22 @@ ln -sf "$REPO_ROOT/dotfiles/.gitignore_global" "$HOME/.gitignore_global"
 echo "==> Git global ignore"
 git config --global core.excludesfile "$HOME/.gitignore_global"
 
-echo "==> Configuring git identity"
-if [ -z "$(git config --global user.name)" ]; then
-  read -rp "Git user name: " GIT_NAME
-  git config --global user.name "$GIT_NAME"
-fi
-if [ -z "$(git config --global user.email)" ]; then
-  read -rp "Git email: " GIT_EMAIL
-  git config --global user.email "$GIT_EMAIL"
+echo "==> Applying VS Code settings for Remote-WSL"
+VSCODE_MACHINE_DIR="$HOME/.vscode-server/data/Machine"
+mkdir -p "$VSCODE_MACHINE_DIR"
+cp "$REPO_ROOT/vscode/settings.json" "$VSCODE_MACHINE_DIR/settings.json"
+
+echo "==> Installing VS Code extensions in WSL"
+if command -v code &>/dev/null; then
+  while IFS= read -r ext; do
+    ext=$(echo "$ext" | xargs)
+    if [ -n "$ext" ] && [[ ! "$ext" =~ ^# ]]; then
+      echo "    Installing $ext"
+      code --install-extension "$ext" --force
+    fi
+  done < "$REPO_ROOT/vscode/extensions.txt"
+else
+  echo "    VS Code 'code' CLI not available in WSL yet. Extensions will install on first Remote-WSL connect."
 fi
 
 echo "==> Done."
