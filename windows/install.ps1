@@ -23,7 +23,7 @@ wsl -d $DistroName -u root bash -c "useradd -m -G sudo -s /bin/bash ${WSL_USER} 
 wsl -d $DistroName -u root bash -c "echo -e '[user]\ndefault=$WSL_USER' > /etc/wsl.conf"
 
 Write-Host "==> Installing packages via winget"
-winget import .\winget-packages.json --accept-package-agreements --accept-source-agreements
+winget import .\winget-packages.json --accept-package-agreements --accept-source-agreements --silent --force
 
 Write-Host "==> VS Code WSL extension"
 code --install-extension ms-vscode-remote.remote-wsl --force
