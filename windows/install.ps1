@@ -56,9 +56,11 @@ wsl --install -d $DistroName --no-launch
 # --- Create WSL user ---
 Write-Host "`n==> Initializing WSL user..."
 wsl -d $DistroName -u root bash -c 'useradd -m -G sudo -s /bin/bash "$WSL_USER" && echo "$WSL_USER:$WSL_PASS" | chpasswd'
-wsl -d $DistroName -u root bash -c 'printf "[user]\ndefault=%s\n" "$WSL_USER" > /etc/wsl.conf'
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$wslConf = (Get-Content "$repoRoot\wsl\wsl.conf" -Raw) -replace 'WSLUSERPLACEHOLDER', $WSL_USER
+$wslConf | wsl -d $DistroName -u root tee /etc/wsl.conf > $null
 
-# Restart distro so wsl.conf default user takes effect
+# Restart distro so wsl.conf (default user + systemd) takes effect
 wsl --terminate $DistroName
 
 # --- Winget packages ---
@@ -122,6 +124,10 @@ if (Test-Path $wslHome) {
 
     # Make scripts executable
     wsl -d $DistroName -u $WSL_USER bash -c 'chmod +x ~/windev-bootstrap/wsl/install.sh ~/windev-bootstrap/wsl/ubuntu-setup.sh ~/windev-bootstrap/github/setup-github.sh ~/windev-bootstrap/wsl/k3d/create-cluster.sh ~/windev-bootstrap/wsl/docker/network-setup.sh'
+
+    # Shutdown WSL so systemd boots as PID 1 on next launch
+    Write-Host "`n==> Restarting WSL for systemd..."
+    wsl --shutdown
 
     # Run WSL setup (apt packages, docker, k3d, kubectl, dotfiles, git config)
     Write-Host "`n==> Running WSL setup scripts..."

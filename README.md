@@ -12,7 +12,10 @@ Bootstrap a Windows + WSL2 (Ubuntu) development environment with:
 ## Prerequisites
 
 - Windows with WSL feature enabled (`wsl --install --no-distribution`)
-- A GitHub Personal Access Token (with `admin:public_key` scope for SSH key upload)
+- A GitHub Personal Access Token with these scopes:
+  - `repo` — required for `gh` operations
+  - `read:org` — required by `gh auth login`
+  - `admin:public_key` — optional, allows automatic SSH key upload to GitHub
 
 ## Architecture
 
@@ -26,7 +29,8 @@ Windows (host)
 └── WSL2 Ubuntu
     ├── Docker engine
     ├── k3d cluster
-    ├── SSH keys + git config (symlinked from dotfiles/)
+    ├── SSH keys (generated during setup)
+    ├── Git config (symlinked from dotfiles/)
     ├── VS Code Server (settings + extensions from vscode/)
     └── Dev Containers (per project)
         ├── zsh + Oh My Zsh + plugins
@@ -58,6 +62,7 @@ windev-bootstrap/
   wsl/
     install.sh               # WSL entry point (apt base packages → ubuntu-setup.sh)
     ubuntu-setup.sh          # Docker, k3d, kubectl, dotfiles, VS Code settings/extensions
+    wsl.conf                 # WSL config template (systemd, default user — written to /etc/wsl.conf)
     docker/
       daemon.json            # Custom Docker networking
       network-setup.sh       # Restart Docker & verify
@@ -104,15 +109,17 @@ The script will prompt for:
 
 Then it automatically:
 1. Applies `.wslconfig` to the Windows host
-2. Installs the Ubuntu distro and creates your WSL user
-3. Installs Windows packages via winget (Terminal, VS Code, Git, gh)
-4. Installs the VS Code Remote-WSL extension on the host
-5. Merges `vscode-settings.json` into Windows VS Code settings
-6. Applies Windows Terminal settings
-7. Copies the repo into WSL and fixes file ownership
-8. Runs WSL setup (apt packages, Docker, k3d, kubectl, k3d cluster, dotfiles)
-9. Applies VS Code settings and installs extensions inside WSL
-10. Runs GitHub setup (gh auth with PAT, SSH key generation, credential helper)
+2. Installs the Ubuntu distro (no launch)
+3. Creates WSL user and writes `wsl.conf` (systemd + default user)
+4. Restarts the distro so `wsl.conf` takes effect
+5. Installs Windows packages via winget (Terminal, VS Code, Git, gh)
+6. Installs the VS Code Remote-WSL extension on the host
+7. Merges `vscode-settings.json` into Windows VS Code settings
+8. Applies Windows Terminal settings
+9. Copies the repo into WSL, fixes ownership, makes scripts executable
+10. Shuts down WSL so systemd boots as PID 1
+11. Runs WSL setup: apt packages, Docker, k3d cluster, kubectl, dotfiles, VS Code settings/extensions
+12. Runs GitHub setup (gh auth with PAT, SSH key generation, credential helper)
 
 ### 3. Use Dev Containers in your projects
 
@@ -155,16 +162,18 @@ Each container gets:
 
 ### k3d Cluster
 
+- Image: `rancher/k3s:v1.29.0-k3s1`
 - 1 server + 2 agents
 - Traefik disabled (bring your own ingress)
 - Port 8080 mapped to load balancer (HTTP)
 - Port 8443 mapped to load balancer (HTTPS)
 - API on port 6550
-- Persistent storage enabled
+- Persistent storage at `/var/lib/k3d/dev`
 
 ### Git
 
 - `pull.rebase = true` — clean linear history by default
 - HTTPS URLs for GitHub automatically rewritten to SSH
 - `gh` registered as git credential helper (HTTPS fallback)
+- HTTPS→SSH rewrite applied at runtime by `setup-github.sh`
 - Identity (name/email) configured in `dotfiles/.gitconfig`

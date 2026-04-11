@@ -32,7 +32,12 @@ if [ ! -f "$HOME/.ssh/id_ed25519" ]; then
     read -rp "Email for SSH key: " GIT_EMAIL
   fi
   ssh-keygen -t ed25519 -C "$GIT_EMAIL" -f "$HOME/.ssh/id_ed25519" -N ""
-  gh ssh-key add "$HOME/.ssh/id_ed25519.pub" -t "WSL Dev Machine"
+  if gh ssh-key add "$HOME/.ssh/id_ed25519.pub" -t "WSL Dev Machine" 2>/dev/null; then
+    echo "    SSH key uploaded to GitHub."
+  else
+    echo "    Could not upload SSH key (PAT may lack admin:public_key scope)."
+    echo "    Add it manually: gh ssh-key add ~/.ssh/id_ed25519.pub -t 'WSL Dev Machine'"
+  fi
 fi
 
 echo "==> Setting SSH as default protocol for GitHub"
