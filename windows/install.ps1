@@ -10,12 +10,17 @@ if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Adm
 
 $WSL_USER = Read-Host "Enter desired WSL username"
 $WSL_PASS = Read-Host "Enter desired WSL password" -AsSecureString
+$GH_PAT = Read-Host "Enter your GitHub Personal Access Token" -AsSecureString
 $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($WSL_PASS)
 $PlainPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+$BSTR_GH = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($GH_PAT)
+$PlainToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR_GH)
 
 $env:WSL_USER = $WSL_USER
 $env:WSL_PASS = $PlainPass
-$env:WSLENV = "WSL_USER/u:WSL_PASS/u"
+$env:GH_PAT = $PlainToken
+
+$env:WSLENV = "WSL_USER/u:WSL_PASS/u:GH_PAT/u"
 
 Write-Host "==> Applying .wslconfig"
 Copy-Item -Path ".\.wslconfig" -Destination "$env:USERPROFILE\.wslconfig" -Force
@@ -29,7 +34,7 @@ wsl -d $DistroName -u root bash -c "useradd -m -G sudo -s /bin/bash ${WSL_USER} 
 wsl -d $DistroName -u root bash -c "echo -e '[user]\ndefault=$WSL_USER' > /etc/wsl.conf"
 
 Write-Host "==> Installing packages via winget"
-winget import .\winget-packages.json --accept-package-agreements --accept-source-agreements --silent --force
+winget import .\winget-packages.json --accept-package-agreements --accept-source-agreements --disable-interactivity --no-upgrade
 
 Write-Host "==> VS Code WSL extension"
 code --install-extension ms-vscode-remote.remote-wsl --force
@@ -67,3 +72,8 @@ if (Test-Path $wslHome) {
 }
 
 Write-Host "==> Done. Restart your machine if WSL was just installed."
+
+$plainPass = $null
+$plainToken = $null
+$env:WSL_PASS = $null
+$env:GH_PAT = $null
