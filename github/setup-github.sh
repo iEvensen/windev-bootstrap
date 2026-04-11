@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SETUP_SSH="${SETUP_SSH:-false}"
+if [[ "${1:-}" == "--ssh" ]]; then
+  SETUP_SSH=true
+fi
+
 echo "==> Installing GitHub CLI"
 if ! command -v gh &>/dev/null; then
   type -p curl >/dev/null || sudo apt install -y curl
@@ -25,20 +30,25 @@ fi
 echo "==> Configuring gh as git credential helper (HTTPS)"
 gh auth setup-git
 
-echo "==> Generating SSH key (if missing)"
-if [ ! -f "$HOME/.ssh/id_ed25519" ]; then
-  GIT_EMAIL=$(git config --global user.email || echo "")
-  if [ -z "$GIT_EMAIL" ]; then
-    read -rp "Email for SSH key: " GIT_EMAIL
+if [[ "$SETUP_SSH" == "true" ]]; then
+  echo "==> Generating SSH key (if missing)"
+  if [ ! -f "$HOME/.ssh/id_ed25519" ]; then
+    GIT_EMAIL=$(git config --global user.email || echo "")
+    if [ -z "$GIT_EMAIL" ]; then
+      read -rp "Email for SSH key: " GIT_EMAIL
+    fi
+    ssh-keygen -t ed25519 -C "$GIT_EMAIL" -f "$HOME/.ssh/id_ed25519" -N ""
+    if gh ssh-key add "$HOME/.ssh/id_ed25519.pub" -t "WSL Dev Machine" 2>/dev/null; then
+      echo "    SSH key uploaded to GitHub."
+    else
+      echo "    Could not upload SSH key (PAT may lack admin:public_key scope)."
+      echo "    Add it manually: gh ssh-key add ~/.ssh/id_ed25519.pub -t 'WSL Dev Machine'"
+    fi
   fi
-  ssh-keygen -t ed25519 -C "$GIT_EMAIL" -f "$HOME/.ssh/id_ed25519" -N ""
-  if gh ssh-key add "$HOME/.ssh/id_ed25519.pub" -t "WSL Dev Machine" 2>/dev/null; then
-    echo "    SSH key uploaded to GitHub."
-  else
-    echo "    Could not upload SSH key (PAT may lack admin:public_key scope)."
-    echo "    Add it manually: gh ssh-key add ~/.ssh/id_ed25519.pub -t 'WSL Dev Machine'"
-  fi
-fi
 
-echo "==> Setting SSH as default protocol for GitHub"
-git config --global url."git@github.com:".insteadOf "https://github.com/"
+  echo "==> Setting SSH as default protocol for GitHub"
+  git config --global url."git@github.com:".insteadOf "https://github.com/"
+else
+  echo "==> Using HTTPS as default protocol for GitHub (gh credential helper)"
+  git config --global --unset-all url."git@github.com:".insteadOf 2>/dev/null || true
+fi

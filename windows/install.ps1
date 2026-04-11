@@ -30,6 +30,13 @@ if ($WSL_USER -notmatch '^[a-z_][a-z0-9_-]*$') {
 $WSL_PASS = Read-Host "Enter desired WSL password" -AsSecureString
 $GH_PAT = Read-Host "Enter your GitHub Personal Access Token" -AsSecureString
 
+$SetupSSH = Read-Host "Set up SSH for GitHub? HTTPS is used by default (y/N)"
+if ($SetupSSH -match '^[Yy]') {
+    $env:SETUP_SSH = "true"
+} else {
+    $env:SETUP_SSH = "false"
+}
+
 # Convert secure strings and release BSTRs
 $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($WSL_PASS)
 $PlainPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
@@ -43,7 +50,7 @@ $PlainToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR_GH
 $env:WSL_USER = $WSL_USER
 $env:WSL_PASS = $PlainPass
 $env:GH_PAT = $PlainToken
-$env:WSLENV = "WSL_USER/u:WSL_PASS/u:GH_PAT/u"
+$env:WSLENV = "WSL_USER/u:WSL_PASS/u:GH_PAT/u:SETUP_SSH/u"
 
 # --- .wslconfig ---
 Write-Host "`n==> Applying .wslconfig"
@@ -148,6 +155,7 @@ $PlainToken = $null
 $env:WSL_USER = $null
 $env:WSL_PASS = $null
 $env:GH_PAT = $null
+$env:SETUP_SSH = $null
 $env:WSLENV = $null
 
 Write-Host "`n==> Setup complete! Restart Windows Terminal to apply all settings."

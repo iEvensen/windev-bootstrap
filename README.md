@@ -6,7 +6,7 @@ Bootstrap a Windows + WSL2 (Ubuntu) development environment with:
 - k3d Kubernetes cluster (declarative config)
 - VS Code Dev Containers (per-project tooling)
 - zsh + Oh My Zsh (inside containers)
-- Git + GitHub CLI + SSH/HTTPS authentication
+- Git + GitHub CLI + HTTPS authentication (SSH optional)
 - Shared VS Code settings and extensions across host, WSL, and dev containers
 
 ## Prerequisites
@@ -15,7 +15,7 @@ Bootstrap a Windows + WSL2 (Ubuntu) development environment with:
 - A GitHub Personal Access Token with these scopes:
   - `repo` — required for `gh` operations
   - `read:org` — required by `gh auth login`
-  - `admin:public_key` — optional, allows automatic SSH key upload to GitHub
+  - `admin:public_key` — only needed if you opt into SSH setup
 
 ## Architecture
 
@@ -29,7 +29,7 @@ Windows (host)
 └── WSL2 Ubuntu
     ├── Docker engine
     ├── k3d cluster
-    ├── SSH keys (generated during setup)
+    ├── SSH keys (optional, generated if SSH setup is chosen)
     ├── Git config (symlinked from dotfiles/)
     ├── VS Code Server (settings + extensions from vscode/)
     └── Dev Containers (per project)
@@ -70,7 +70,7 @@ windev-bootstrap/
       k3d-dev.yaml           # Declarative k3d cluster config
       create-cluster.sh      # Create cluster from config
   github/
-    setup-github.sh          # GitHub CLI + auth (PAT or interactive) + SSH key
+    setup-github.sh          # GitHub CLI + auth (PAT or interactive) + optional SSH key
   devcontainer/
     Dockerfile.base          # Base dev container (zsh, kubectl, helm)
     zsh/
@@ -83,7 +83,7 @@ windev-bootstrap/
     settings.json            # Base VS Code settings (applied to WSL + inherited by containers)
     extensions.txt           # VS Code extensions (installed in WSL)
   dotfiles/
-    .gitconfig               # Git config (identity, rebase, SSH default)
+    .gitconfig               # Git config (identity, rebase)
     .gitignore_global        # Global gitignore
 ```
 
@@ -106,6 +106,7 @@ cd windev-bootstrap\windows
 The script will prompt for:
 - **WSL username** and **password**
 - **GitHub Personal Access Token**
+- **SSH setup** (optional, default: no — HTTPS is used)
 
 Then it automatically:
 1. Applies `.wslconfig` to the Windows host
@@ -119,7 +120,7 @@ Then it automatically:
 9. Copies the repo into WSL, fixes ownership, makes scripts executable
 10. Shuts down WSL so systemd boots as PID 1
 11. Runs WSL setup: apt packages, Docker, k3d cluster, kubectl, dotfiles, VS Code settings/extensions
-12. Runs GitHub setup (gh auth with PAT, SSH key generation, credential helper)
+12. Runs GitHub setup (gh auth with PAT, credential helper; SSH key generation if opted in)
 
 ### 3. Use Dev Containers in your projects
 
@@ -173,7 +174,6 @@ Each container gets:
 ### Git
 
 - `pull.rebase = true` — clean linear history by default
-- HTTPS URLs for GitHub automatically rewritten to SSH
-- `gh` registered as git credential helper (HTTPS fallback)
-- HTTPS→SSH rewrite applied at runtime by `setup-github.sh`
+- HTTPS is the default protocol for GitHub (via `gh` credential helper)
+- SSH is available as an opt-in (`--ssh` flag or `SETUP_SSH=true`)
 - Identity (name/email) configured in `dotfiles/.gitconfig`

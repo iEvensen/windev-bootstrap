@@ -56,6 +56,9 @@ sg docker -c "bash \"$REPO_ROOT/wsl/k3d/create-cluster.sh\""
 echo "==> Creating project directories"
 mkdir -p "$HOME/projects/workspace"
 
+echo "==> Installing fzf"
+sudo apt install -y fzf
+
 echo "==> Installing zsh"
 sudo apt install -y zsh
 sudo chsh -s "$(which zsh)" "$USER"
