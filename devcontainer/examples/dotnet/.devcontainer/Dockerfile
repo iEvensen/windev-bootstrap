@@ -1,6 +1,7 @@
 FROM mcr.microsoft.com/devcontainers/dotnet:10.0
 
 ARG USERNAME=vscode
+USER $USERNAME
 
 # Install kubectl
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
@@ -11,8 +12,6 @@ RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm
 
 # Install fzf
 RUN apt-get update && apt-get install -y fzf && rm -rf /var/lib/apt/lists/*
-
-USER $USERNAME
 
 # Oh My Zsh plugins (OMZ is pre-installed in Microsoft base images)
 RUN git clone https://github.com/zsh-users/zsh-autosuggestions \

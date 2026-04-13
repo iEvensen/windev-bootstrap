@@ -1,6 +1,7 @@
 FROM mcr.microsoft.com/devcontainers/typescript-node:24
 
 ARG USERNAME=node
+USER $USERNAME
 
 # Install kubectl
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
@@ -18,8 +19,6 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 # Install Pulumi
 RUN curl -fsSL https://get.pulumi.com | sh
 ENV PATH="/home/node/.pulumi/bin:${PATH}"
-
-USER $USERNAME
 
 # Oh My Zsh plugins (OMZ is pre-installed in Microsoft base images)
 RUN git clone https://github.com/zsh-users/zsh-autosuggestions \
