@@ -29,7 +29,7 @@
     "alwaysOnTop": false,
     "copyFormatting": "none",
     "copyOnSelect": false,
-    "defaultProfile": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
+    "defaultProfile": "{2c4de342-38b7-51cf-b940-2309a097f518}",
     "disableAnimations": true,
     "keybindings": [
         {
@@ -84,10 +84,11 @@
                 "source": "Windows.Terminal.Azure"
             },
             {
-                "guid": "{22ca3efa-038f-5ab1-969f-ca1ecd6deb01}",
+                "commandline": "wsl.exe -d Ubuntu",
+                "guid": "{2c4de342-38b7-51cf-b940-2309a097f518}",
                 "hidden": false,
-                "name": "Ubuntu",
-                "source": "Microsoft.WSL"
+                "icon": "ms-appx:///ProfileIcons/{9acb9455-ca41-5af7-950f-6bca1bc9722f}.png",
+                "name": "Ubuntu"
             }
         ]
     },

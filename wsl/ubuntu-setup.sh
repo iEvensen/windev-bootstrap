@@ -73,6 +73,24 @@ if [ ! -d "$HOME/.oh-my-zsh" ]; then
   sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 fi
 
+echo "==> Installing zsh custom plugins"
+ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+declare -A custom_plugins=(
+  [zsh-autosuggestions]=https://github.com/zsh-users/zsh-autosuggestions
+  [zsh-syntax-highlighting]=https://github.com/zsh-users/zsh-syntax-highlighting
+  [fast-syntax-highlighting]=https://github.com/zdharma-continuum/fast-syntax-highlighting
+  [zsh-history-substring-search]=https://github.com/zsh-users/zsh-history-substring-search
+)
+for plugin in "${!custom_plugins[@]}"; do
+  dest="$ZSH_CUSTOM/plugins/$plugin"
+  if [ ! -d "$dest" ]; then
+    echo "    Cloning $plugin"
+    git clone --depth=1 "${custom_plugins[$plugin]}" "$dest"
+  else
+    echo "    $plugin already installed"
+  fi
+done
+
 echo "==> Linking dotfiles"
 ln -sf "$REPO_ROOT/dotfiles/.gitconfig" "$HOME/.gitconfig"
 ln -sf "$REPO_ROOT/dotfiles/.gitignore_global" "$HOME/.gitignore_global"
