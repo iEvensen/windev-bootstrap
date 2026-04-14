@@ -8,6 +8,7 @@ Bootstrap a Windows + WSL2 (Ubuntu) development environment with:
 - zsh + Oh My Zsh (inside containers)
 - Git + GitHub CLI + HTTPS authentication (SSH optional)
 - Shared VS Code settings and extensions across host, WSL, and dev containers
+- Corporate proxy/SSL support with internal container registry
 
 ## Prerequisites
 
@@ -107,20 +108,25 @@ The script will prompt for:
 - **WSL username** and **password**
 - **GitHub Personal Access Token**
 - **SSH setup** (optional, default: no — HTTPS is used)
+- **Internal corporate registry** (optional, default: no — uses Docker Hub directly)
 
 Then it automatically:
-1. Applies `.wslconfig` to the Windows host
-2. Installs the Ubuntu distro (no launch)
-3. Creates WSL user and writes `wsl.conf` (systemd + default user)
-4. Restarts the distro so `wsl.conf` takes effect
-5. Installs Windows packages via winget (Terminal, VS Code, Git, gh)
-6. Installs the VS Code Remote-WSL extension on the host
-7. Merges `vscode-settings.json` into Windows VS Code settings
-8. Applies Windows Terminal settings
-9. Copies the repo into WSL, fixes ownership, makes scripts executable
-10. Shuts down WSL so systemd boots as PID 1
-11. Runs WSL setup: apt packages, Docker, k3d cluster, kubectl, dotfiles, VS Code settings/extensions
-12. Runs GitHub setup (gh auth with PAT, credential helper; SSH key generation if opted in)
+1. Exports corporate CA certificates and sets `NODE_EXTRA_CA_CERTS` (if internal selected)
+2. Applies `.wslconfig` to the Windows host
+3. Installs the Ubuntu distro if not already present
+4. Creates WSL user (or updates password if user exists)
+5. Writes `wsl.conf` (systemd + default user) and restarts the distro
+6. Installs Windows packages via winget (Terminal, VS Code, Git, gh)
+7. Installs JetBrainsMono Nerd Font (skipped if already installed)
+8. Installs the VS Code Remote-WSL extension on the host
+9. Merges `vscode-settings.json` into Windows VS Code settings
+10. Merges Windows Terminal settings (preserves existing profiles)
+11. Copies/syncs the repo into WSL, fixes ownership, makes scripts executable
+12. Configures internal registry mirror for Docker and k3d (if internal selected)
+13. Exports corporate CA certs into WSL and configures SSL env vars
+14. Shuts down WSL so systemd boots as PID 1
+15. Runs WSL setup: apt update/upgrade, Docker, k3d cluster, kubectl, zsh plugins, dotfiles, VS Code settings/extensions
+16. Runs GitHub setup (gh auth with PAT, credential helper; SSH key generation if opted in)
 
 ### 3. Use Dev Containers in your projects
 
@@ -160,6 +166,7 @@ Each container gets:
 
 - Bridge IP: `192.168.1.1/24`
 - Default address pool: `192.168.4.0/22` (size /24)
+- Internal registry mirror: `packagemanager.helsenord.no/docker-int-drift/` (if internal selected)
 
 ### k3d Cluster
 
@@ -170,6 +177,7 @@ Each container gets:
 - Port 8443 mapped to load balancer (HTTPS)
 - API on port 6550
 - Persistent storage at `/var/lib/k3d/dev`
+- Internal Docker Hub mirror configured for containerd (if internal selected)
 
 ### Git
 
@@ -177,3 +185,42 @@ Each container gets:
 - HTTPS is the default protocol for GitHub (via `gh` credential helper)
 - SSH is available as an opt-in (`--ssh` flag or `SETUP_SSH=true`)
 - Identity (name/email) configured in `dotfiles/.gitconfig`
+
+### Corporate SSL / Internal Registry
+
+When you select **internal corporate registry** during setup, the script:
+
+1. Exports corporate root CA certificates from `Cert:\LocalMachine\Root` (matching Helse/helsenord/HN-)
+2. Sets `NODE_EXTRA_CA_CERTS` on Windows so VS Code extension installs work
+3. Copies certs into WSL and runs `update-ca-certificates`
+4. Configures these environment variables (persisted via `/etc/profile.d/corp-certs.sh`):
+
+| Variable | Tools covered |
+|----------|---------------|
+| `NODE_EXTRA_CA_CERTS` | Node.js, npm, yarn, VS Code server |
+| `PIP_CERT` | pip |
+| `REQUESTS_CA_BUNDLE` | Python requests, httpx, urllib3, boto3, Azure CLI |
+| `SSL_CERT_FILE` | OpenSSL-based tools (Ruby, Go, generic) |
+| `CURL_CA_BUNDLE` | curl, wget |
+| `SSL_CERT_DIR` | .NET, OpenSSL directory lookups |
+| `AZURE_CA_BUNDLE` | Azure CLI |
+| `PULUMI_CA_BUNDLE` | Pulumi |
+| `git http.sslCAInfo` | Git HTTPS operations |
+
+5. Configures Docker daemon to mirror Docker Hub via `packagemanager.helsenord.no/docker-int-drift/`
+6. Configures k3d containerd to mirror Docker Hub via the same internal registry
+
+If the automatic cert export doesn't find the right certificates, you can manually place `.crt` files in the `certs/` directory inside the WSL repo copy before running setup.
+
+### Idempotency
+
+The script is fully idempotent — safe to re-run at any time to pick up changes:
+
+- WSL distro install is skipped if already present
+- WSL user creation is skipped if user exists (password is updated)
+- k3d cluster creation is skipped if cluster `dev` exists
+- JetBrainsMono Nerd Font download is skipped if already installed
+- Repo is always synced (not skipped) so WSL copy stays current
+- Windows Terminal settings are merged, preserving auto-discovered profiles
+- VS Code settings are merged, not overwritten
+- All apt/winget/extension installs are safe to repeat
