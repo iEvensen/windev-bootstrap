@@ -56,7 +56,7 @@ sudo apt upgrade -y
 echo "==> Installing base packages"
 sudo apt install -y \
   ca-certificates curl gnupg lsb-release \
-  git build-essential \
+  git build-essential unzip tar \
   apt-transport-https software-properties-common
 
 echo "==> Running Ubuntu setup"

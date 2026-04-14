@@ -61,6 +61,81 @@ sudo systemctl enable k3d-dev-cluster.service
 echo "==> Creating project directories"
 mkdir -p "$HOME/projects/workspace"
 
+echo "==> Installing jq"
+if ! command -v jq &>/dev/null; then
+  sudo apt install -y jq
+else
+  echo "    jq already installed"
+fi
+
+echo "==> Installing tree"
+if ! command -v tree &>/dev/null; then
+  sudo apt install -y tree
+else
+  echo "    tree already installed"
+fi
+
+echo "==> Installing Helm"
+if ! command -v helm &>/dev/null; then
+  curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | sudo bash
+else
+  echo "    helm already installed"
+fi
+
+echo "==> Installing Azure CLI"
+if ! command -v az &>/dev/null; then
+  sudo mkdir -p /etc/apt/keyrings
+  curl -sLS https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg
+  sudo chmod go+r /etc/apt/keyrings/microsoft.gpg
+  AZ_REPO="$(lsb_release -cs)"
+  echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ ${AZ_REPO} main" | \
+    sudo tee /etc/apt/sources.list.d/azure-cli.list > /dev/null
+  sudo apt-get update -y
+  sudo apt-get install -y --no-install-recommends azure-cli
+else
+  echo "    Azure CLI already installed"
+fi
+
+echo "==> Installing Pulumi"
+if ! command -v pulumi &>/dev/null; then
+  curl -fsSL https://get.pulumi.com | sh
+  sudo ln -sf "$HOME/.pulumi/bin/pulumi" /usr/local/bin/pulumi
+else
+  echo "    pulumi already installed"
+fi
+
+echo "==> Installing HashiCorp Vault CLI"
+if ! command -v vault &>/dev/null; then
+  VAULT_VERSION="$(curl -fsSL https://checkpoint-api.hashicorp.com/v1/check/vault | jq -r '.current_version')"
+  curl -fsSLo /tmp/vault.zip "https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip"
+  sudo unzip -o /tmp/vault.zip -d /usr/local/bin
+  rm -f /tmp/vault.zip
+else
+  echo "    vault already installed"
+fi
+
+echo "==> Installing yq"
+if ! command -v yq &>/dev/null; then
+  YQ_VERSION="$(curl -fsSL https://api.github.com/repos/mikefarah/yq/releases/latest | jq -r '.tag_name')"
+  curl -fsSLo /tmp/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+  chmod +x /tmp/yq
+  sudo install -m 0755 /tmp/yq /usr/local/bin/yq
+  rm -f /tmp/yq
+else
+  echo "    yq already installed"
+fi
+
+echo "==> Installing k9s"
+if ! command -v k9s &>/dev/null; then
+  K9S_VERSION="$(curl -fsSL https://api.github.com/repos/derailed/k9s/releases/latest | jq -r '.tag_name')"
+  curl -fsSLo /tmp/k9s.tar.gz "https://github.com/derailed/k9s/releases/download/${K9S_VERSION}/k9s_Linux_amd64.tar.gz"
+  tar -xzf /tmp/k9s.tar.gz -C /tmp k9s
+  sudo install -m 0755 /tmp/k9s /usr/local/bin/k9s
+  rm -f /tmp/k9s.tar.gz /tmp/k9s
+else
+  echo "    k9s already installed"
+fi
+
 echo "==> Installing fzf"
 sudo apt install -y fzf
 
