@@ -151,9 +151,20 @@ if ($fontAlreadyInstalled) {
 
 # --- VS Code Remote-WSL + Dev Containers extensions (other extensions install inside WSL) ---
 Write-Host "`n==> Installing VS Code host extensions"
-$vscodeExtDir = "$OriginalUserProfile\.vscode\extensions"
-code --extensions-dir $vscodeExtDir --install-extension ms-vscode-remote.remote-wsl --force
-code --extensions-dir $vscodeExtDir --install-extension ms-vscode-remote.remote-containers --force
+# Temporarily override profile paths so 'code' installs to the correct (non-admin) user
+$savedUserProfile = $env:USERPROFILE
+$savedAppData = $env:APPDATA
+$savedLocalAppData = $env:LOCALAPPDATA
+$env:USERPROFILE = $OriginalUserProfile
+$env:APPDATA = $OriginalAppData
+$env:LOCALAPPDATA = $OriginalLocalAppData
+
+code --install-extension ms-vscode-remote.remote-wsl --force
+code --install-extension ms-vscode-remote.remote-containers --force
+
+$env:USERPROFILE = $savedUserProfile
+$env:APPDATA = $savedAppData
+$env:LOCALAPPDATA = $savedLocalAppData
 
 # --- VS Code Windows settings ---
 Write-Host "`n==> Applying VS Code Windows settings"
