@@ -172,7 +172,7 @@ Each container gets:
 
 - Image: `rancher/k3s:v1.35.3-k3s1`
 - 1 server + 2 agents
-- Traefik disabled (bring your own ingress)
+- Traefik enabled (built-in ingress controller)
 - Port 8080 mapped to load balancer (HTTP)
 - Port 8443 mapped to load balancer (HTTPS)
 - API on port 6550
