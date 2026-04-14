@@ -149,9 +149,11 @@ if ($fontAlreadyInstalled) {
     }
 }
 
-# --- VS Code Remote-WSL extension (other extensions install inside WSL) ---
-Write-Host "`n==> Installing VS Code Remote-WSL extension"
-code --install-extension ms-vscode-remote.remote-wsl --force
+# --- VS Code Remote-WSL + Dev Containers extensions (other extensions install inside WSL) ---
+Write-Host "`n==> Installing VS Code host extensions"
+$vscodeExtDir = "$OriginalUserProfile\.vscode\extensions"
+code --extensions-dir $vscodeExtDir --install-extension ms-vscode-remote.remote-wsl --force
+code --extensions-dir $vscodeExtDir --install-extension ms-vscode-remote.remote-containers --force
 
 # --- VS Code Windows settings ---
 Write-Host "`n==> Applying VS Code Windows settings"

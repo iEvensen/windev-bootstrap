@@ -1,4 +1,5 @@
 ms-vscode-remote.remote-wsl
+ms-vscode-remote.remote-containers
 ms-kubernetes-tools.vscode-kubernetes-tools
 ms-azuretools.vscode-docker
 ms-python.python
