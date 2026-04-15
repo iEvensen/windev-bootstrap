@@ -8,3 +8,4 @@ dnsTunneling=true
 
 [experimental]
 autoMemoryReclaim=gradual
+sparseVhd=true
