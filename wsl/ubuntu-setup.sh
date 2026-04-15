@@ -96,6 +96,25 @@ else
   echo "    Azure CLI already installed"
 fi
 
+echo "==> Installing Node.js via nvm"
+if ! command -v nvm &>/dev/null && [ ! -d "$HOME/.nvm" ]; then
+  curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
+  export NVM_DIR="$HOME/.nvm"
+  # shellcheck source=/dev/null
+  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+  nvm install 25
+else
+  echo "    nvm already installed"
+fi
+
+echo "==> Installing .NET SDK"
+if ! command -v dotnet &>/dev/null; then
+  sudo apt-get update -y
+  sudo apt-get install -y dotnet-sdk-10.0
+else
+  echo "    dotnet already installed"
+fi
+
 echo "==> Installing Pulumi"
 if ! command -v pulumi &>/dev/null; then
   curl -fsSL https://get.pulumi.com | sh
