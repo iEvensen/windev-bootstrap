@@ -5,6 +5,11 @@ metadata:
 servers: 1
 agents: 2
 image: rancher/k3s:v1.35.3-k3s1
+registries:
+  create:
+    name: registry.localhost
+    host: "0.0.0.0"
+    hostPort: "5000"
 kubeAPI:
   host: "127.0.0.1"
   hostPort: "6550"
