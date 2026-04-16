@@ -3,9 +3,50 @@ set -euo pipefail
 
 REPO_ROOT="${REPO_ROOT:-$HOME/windev-bootstrap}"
 
-# --- Install corporate CA certificates (if present) ---
+# --- Export corporate CA certificates from Windows cert store ---
 CERT_DIR="$REPO_ROOT/certs"
-if [ -d "$CERT_DIR" ] && ls "$CERT_DIR"/*.crt &>/dev/null; then
+mkdir -p "$CERT_DIR"
+echo "==> Checking Windows certificate store for corporate CA certificates"
+if command -v powershell.exe &>/dev/null; then
+  # Export non-default root CAs (filter out well-known public CAs by checking
+  # for certs whose issuer == subject, i.e. self-signed roots, that are NOT
+  # shipped with Windows by default — heuristic: subject contains org domain keywords)
+  powershell.exe -NoProfile -Command '
+    $known = @("Microsoft","Comodo","DigiCert","GlobalSign","VeriSign","ISRG",
+      "Starfield","Go Daddy","GoDaddy","Buypass","Certum","USERTrust","SECOM",
+      "Sectigo","Symantec","AAA Certificate","Security Communication","Class 3 Public Primary")
+    $certs = Get-ChildItem Cert:\LocalMachine\Root | Where-Object {
+      $dominated = $false
+      foreach ($k in $known) { if ($_.Subject -like "*$k*") { $dominated = $true; break } }
+      -not $dominated -and $_.NotAfter -gt (Get-Date)
+    }
+    foreach ($c in $certs) {
+      $name = ($c.Subject -replace "CN=","" -split ",")[0].Trim() -replace "[^a-zA-Z0-9._-]","_"
+      $pem = "-----BEGIN CERTIFICATE-----"
+      $pem += [Environment]::NewLine
+      $pem += [Convert]::ToBase64String($c.RawData, "InsertLineBreaks")
+      $pem += [Environment]::NewLine
+      $pem += "-----END CERTIFICATE-----"
+      Write-Output "===CERT:${name}==="
+      Write-Output $pem
+    }
+  ' | awk '
+    /^===CERT:/ {
+      match($0, /===CERT:(.+)===/, m)
+      file = "'"$CERT_DIR"'/" m[1] ".crt"
+      next
+    }
+    file { print > file }
+    /^-----END CERTIFICATE-----/ { close(file); file="" }
+  '
+  cert_count=$(find "$CERT_DIR" -name "*.crt" 2>/dev/null | wc -l)
+  echo "    Exported $cert_count certificate(s) from Windows store"
+else
+  echo "    powershell.exe not found; skipping Windows cert export"
+fi
+
+# --- Install corporate CA certificates (if present) ---
+if ls "$CERT_DIR"/*.crt &>/dev/null; then
   echo "==> Installing corporate CA certificates"
   sudo cp "$CERT_DIR"/*.crt /usr/local/share/ca-certificates/
   sudo update-ca-certificates

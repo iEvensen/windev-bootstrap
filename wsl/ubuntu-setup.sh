@@ -58,8 +58,13 @@ sudo cp "$REPO_ROOT/wsl/k3d/k3d-dev-cluster.service" /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable k3d-dev-cluster.service
 
-echo "==> Creating project directories"
-mkdir -p "$HOME/projects/workspace"
+echo "==> Mounting Windows projects directory"
+WIN_USER="$(cmd.exe /C echo %USERNAME% 2>/dev/null | tr -d '\r')"
+WIN_PROJECTS="/mnt/c/Users/${WIN_USER}/OneDrive - Helse Nord RHF/projects"
+mkdir -p "$WIN_PROJECTS/workspace"
+# Pin folder to "Always keep on this device" so OneDrive doesn't make files cloud-only
+powershell.exe -NoProfile -Command "attrib +P -U '$(wslpath -w "$WIN_PROJECTS")' /S /D" 2>/dev/null || true
+ln -sfn "$WIN_PROJECTS" "$HOME/projects"
 
 echo "==> Installing jq"
 if ! command -v jq &>/dev/null; then
