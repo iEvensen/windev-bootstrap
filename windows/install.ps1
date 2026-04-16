@@ -270,10 +270,13 @@ if (Test-Path $wslHome) {
         $daemonConfig | Add-Member -MemberType NoteProperty -Name "registry-mirrors" -Value @("https://packagemanager.helsenord.no/docker-int-drift/") -Force
         $daemonConfig | ConvertTo-Json -Depth 10 | Set-Content $daemonJsonPath -Encoding UTF8
 
-        # Add registries mirror to k3d config
+        # Add registries mirror to k3d config (merge with existing registries block)
         $k3dConfigPath = "$wslDest\wsl\k3d\k3d-dev.yaml"
         $k3dContent = Get-Content $k3dConfigPath -Raw
-        $registriesBlock = "registries:`n  config: |`n    mirrors:`n      `"docker.io`":`n        endpoint:`n          - `"https://packagemanager.helsenord.no/docker-int-drift/`"`n"
+        # Remove existing registries block (everything from 'registries:' to next top-level key)
+        $k3dContent = $k3dContent -replace '(?m)^registries:\r?\n(?:  .*\r?\n)*', ''
+        # Insert combined registries block before 'options:'
+        $registriesBlock = "registries:`n  create:`n    name: registry.localhost`n    host: `"0.0.0.0`"`n    hostPort: `"5000`"`n  config: |`n    mirrors:`n      `"docker.io`":`n        endpoint:`n          - `"https://packagemanager.helsenord.no/docker-int-drift/`"`n"
         $k3dContent = $k3dContent -replace '(?m)^options:', "${registriesBlock}options:"
         Set-Content $k3dConfigPath -Value $k3dContent -Encoding UTF8
 
