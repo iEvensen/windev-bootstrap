@@ -60,10 +60,8 @@ sudo systemctl enable k3d-dev-cluster.service
 
 echo "==> Mounting Windows projects directory"
 WIN_USER="$(cmd.exe /C echo %USERNAME% 2>/dev/null | tr -d '\r')"
-WIN_PROJECTS="/mnt/c/Users/${WIN_USER}/OneDrive - Helse Nord RHF/projects"
+WIN_PROJECTS="/mnt/c/Users/${WIN_USER}/projects"
 mkdir -p "$WIN_PROJECTS/workspace"
-# Pin folder to "Always keep on this device" so OneDrive doesn't make files cloud-only
-powershell.exe -NoProfile -Command "attrib +P -U '$(wslpath -w "$WIN_PROJECTS")' /S /D" 2>/dev/null || true
 # Replace ~/projects with a symlink (remove real dir if it exists)
 if [ -d "$HOME/projects" ] && [ ! -L "$HOME/projects" ]; then
   rm -rf "$HOME/projects"
