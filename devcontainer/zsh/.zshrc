@@ -41,6 +41,9 @@ source $ZSH/oh-my-zsh.sh
 
 [ -f "$HOME/.aliases" ] && source "$HOME/.aliases"
 
+# Corporate CA certificates (sourced from profile.d for non-login shells)
+[ -f /etc/profile.d/corp-certs.sh ] && source /etc/profile.d/corp-certs.sh
+
 # nvm
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"

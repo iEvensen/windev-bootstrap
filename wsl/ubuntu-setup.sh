@@ -64,6 +64,10 @@ WIN_PROJECTS="/mnt/c/Users/${WIN_USER}/OneDrive - Helse Nord RHF/projects"
 mkdir -p "$WIN_PROJECTS/workspace"
 # Pin folder to "Always keep on this device" so OneDrive doesn't make files cloud-only
 powershell.exe -NoProfile -Command "attrib +P -U '$(wslpath -w "$WIN_PROJECTS")' /S /D" 2>/dev/null || true
+# Replace ~/projects with a symlink (remove real dir if it exists)
+if [ -d "$HOME/projects" ] && [ ! -L "$HOME/projects" ]; then
+  rm -rf "$HOME/projects"
+fi
 ln -sfn "$WIN_PROJECTS" "$HOME/projects"
 
 echo "==> Installing jq"
