@@ -3,49 +3,8 @@ set -euo pipefail
 
 REPO_ROOT="${REPO_ROOT:-$HOME/windev-bootstrap}"
 
-# --- Export corporate CA certificates from Windows cert store ---
+# --- Install corporate CA certificates (if present in certs/) ---
 CERT_DIR="$REPO_ROOT/certs"
-mkdir -p "$CERT_DIR"
-echo "==> Checking Windows certificate store for corporate CA certificates"
-if command -v powershell.exe &>/dev/null; then
-  # Export non-default root CAs (filter out well-known public CAs by checking
-  # for certs whose issuer == subject, i.e. self-signed roots, that are NOT
-  # shipped with Windows by default — heuristic: subject contains org domain keywords)
-  powershell.exe -NoProfile -Command '
-    $known = @("Microsoft","Comodo","DigiCert","GlobalSign","VeriSign","ISRG",
-      "Starfield","Go Daddy","GoDaddy","Buypass","Certum","USERTrust","SECOM",
-      "Sectigo","Symantec","AAA Certificate","Security Communication","Class 3 Public Primary")
-    $certs = Get-ChildItem Cert:\LocalMachine\Root | Where-Object {
-      $dominated = $false
-      foreach ($k in $known) { if ($_.Subject -like "*$k*") { $dominated = $true; break } }
-      -not $dominated -and $_.NotAfter -gt (Get-Date)
-    }
-    foreach ($c in $certs) {
-      $name = ($c.Subject -replace "CN=","" -split ",")[0].Trim() -replace "[^a-zA-Z0-9._-]","_"
-      $pem = "-----BEGIN CERTIFICATE-----"
-      $pem += [Environment]::NewLine
-      $pem += [Convert]::ToBase64String($c.RawData, "InsertLineBreaks")
-      $pem += [Environment]::NewLine
-      $pem += "-----END CERTIFICATE-----"
-      Write-Output "===CERT:${name}==="
-      Write-Output $pem
-    }
-  ' | awk '
-    /^===CERT:/ {
-      match($0, /===CERT:(.+)===/, m)
-      file = "'"$CERT_DIR"'/" m[1] ".crt"
-      next
-    }
-    file { print > file }
-    /^-----END CERTIFICATE-----/ { close(file); file="" }
-  '
-  cert_count=$(find "$CERT_DIR" -name "*.crt" 2>/dev/null | wc -l)
-  echo "    Exported $cert_count certificate(s) from Windows store"
-else
-  echo "    powershell.exe not found; skipping Windows cert export"
-fi
-
-# --- Install corporate CA certificates (if present) ---
 if ls "$CERT_DIR"/*.crt &>/dev/null; then
   echo "==> Installing corporate CA certificates"
   sudo cp "$CERT_DIR"/*.crt /usr/local/share/ca-certificates/
@@ -88,11 +47,49 @@ export PULUMI_CA_BUNDLE="$CA_BUNDLE"
 EOF
 fi
 
+# --- Switch apt sources to HTTPS (required for Checkpoint transparent inspection) ---
+echo "==> Switching apt sources to HTTPS"
+for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
+  [ -f "$f" ] && sudo sed -i 's|http://archive\.ubuntu\.com|https://archive.ubuntu.com|g; s|http://security\.ubuntu\.com|https://security.ubuntu.com|g' "$f"
+done
+# Also handle the newer DEB822 .sources format (Ubuntu 24.04+)
+for f in /etc/apt/sources.list.d/*.sources; do
+  [ -f "$f" ] && sudo sed -i 's|http://archive\.ubuntu\.com|https://archive.ubuntu.com|g; s|http://security\.ubuntu\.com|https://security.ubuntu.com|g' "$f"
+done
+
+# --- Add Microsoft .NET package repository (alternative mirror) ---
+echo "==> Adding Microsoft package repository"
+if [ ! -f /etc/apt/sources.list.d/microsoft-prod.list ]; then
+  curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg > /dev/null
+  echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" | \
+    sudo tee /etc/apt/sources.list.d/microsoft-prod.list > /dev/null
+  # Keep Microsoft low priority for most packages, but allow dotnet fallback
+  sudo tee /etc/apt/preferences.d/microsoft-prod.pref > /dev/null <<'PREF'
+Package: *
+Pin: origin packages.microsoft.com
+Pin-Priority: 100
+
+Package: dotnet* aspnetcore*
+Pin: origin packages.microsoft.com
+Pin-Priority: 500
+PREF
+  echo "    Microsoft repository added (fallback priority)"
+else
+  echo "    Microsoft repository already configured"
+fi
+
 echo "==> Updating apt"
 sudo apt update
 
+# Hold Ubuntu-packaged dotnet to avoid upgrade failures (dotnet is managed via install scripts)
+dpkg -l 'dotnet*' 'aspnetcore*' 2>/dev/null | awk '/^ii/ {print $2}' | xargs -r sudo apt-mark hold 2>/dev/null || true
+
 echo "==> Upgrading packages"
-sudo apt upgrade -y
+sudo apt upgrade -y || {
+  echo "    apt upgrade failed, retrying with --fix-missing..."
+  sudo apt update
+  sudo apt upgrade -y --fix-missing || echo "    WARNING: apt upgrade failed; continuing with existing packages"
+}
 
 echo "==> Installing base packages"
 sudo apt install -y \

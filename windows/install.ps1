@@ -53,12 +53,26 @@ $env:WSL_PASS = $PlainPass
 $env:GH_PAT = $PlainToken
 $env:WSLENV = "WSL_USER/u:WSL_PASS/u:GH_PAT/u:SETUP_SSH/u"
 
+# --- Helper: get non-public corporate root CA certificates ---
+$KnownPublicCAs = @("Microsoft","Comodo","DigiCert","GlobalSign","VeriSign","ISRG",
+    "Starfield","Go Daddy","GoDaddy","Buypass","Certum","USERTrust","SECOM",
+    "Sectigo","Symantec","AAA Certificate","Security Communication","Class 3 Public Primary")
+
+function Get-CorporateCACerts {
+    Get-ChildItem -Path Cert:\LocalMachine\Root | Where-Object {
+        $subj = $_.Subject
+        $dominated = $false
+        foreach ($k in $KnownPublicCAs) { if ($subj -like "*$k*") { $dominated = $true; break } }
+        -not $dominated -and $_.NotAfter -gt (Get-Date)
+    }
+}
+
 # --- Export corporate CA bundle for Windows tools (Node.js, VS Code) ---
 if ($UseInternalRegistry) {
     Write-Host "`n==> Exporting corporate CA bundle for Windows"
     $winCaBundlePath = "$env:TEMP\corp-ca-bundle.pem"
     $pemContent = ""
-    Get-ChildItem -Path Cert:\LocalMachine\Root | Where-Object { $_.Subject -match "Helse|helsenord|HN-" } | ForEach-Object {
+    Get-CorporateCACerts | ForEach-Object {
         $pemContent += "-----BEGIN CERTIFICATE-----`n"
         $pemContent += [Convert]::ToBase64String($_.RawData, 'InsertLineBreaks')
         $pemContent += "`n-----END CERTIFICATE-----`n"
@@ -266,18 +280,15 @@ if (Test-Path $wslHome) {
         Write-Host "    Internal registry mirror configured for Docker and k3d."
     }
 
-    # --- Export and install corporate CA certificates ---
+    # --- Export corporate CA certificates for WSL ---
     if ($UseInternalRegistry) {
-        Write-Host "`n==> Exporting corporate root CA certificates from Windows"
+        Write-Host "`n==> Exporting corporate root CA certificates for WSL"
         $certDir = "$wslDest\certs"
         if (-not (Test-Path $certDir)) { New-Item -ItemType Directory -Path $certDir -Force | Out-Null }
 
         $exported = 0
-        Get-ChildItem -Path Cert:\LocalMachine\Root | Where-Object {
-            $_.Issuer -ne $_.Subject -or $_.Subject -match "Helse|helsenord|HN-"
-        } | Where-Object { $_.Subject -match "Helse|helsenord|HN-" } | ForEach-Object {
-            $name = ($_.Subject -replace '[^a-zA-Z0-9]', '_') -replace '__+', '_'
-            $name = $name.Substring(0, [Math]::Min($name.Length, 60))
+        Get-CorporateCACerts | ForEach-Object {
+            $name = ($_.Subject -replace 'CN=','' -split ',')[0].Trim() -replace '[^a-zA-Z0-9._-]','_'
             $certPath = "$certDir\$name.crt"
             $pem = "-----BEGIN CERTIFICATE-----`n"
             $pem += [Convert]::ToBase64String($_.RawData, 'InsertLineBreaks')
