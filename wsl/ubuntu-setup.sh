@@ -58,15 +58,8 @@ sudo cp "$REPO_ROOT/wsl/k3d/k3d-dev-cluster.service" /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable k3d-dev-cluster.service
 
-echo "==> Mounting Windows projects directory"
-WIN_USER="$(cmd.exe /C echo %USERNAME% 2>/dev/null | tr -d '\r')"
-WIN_PROJECTS="/mnt/c/Users/${WIN_USER}/projects"
-mkdir -p "$WIN_PROJECTS/workspace"
-# Replace ~/projects with a symlink (remove real dir if it exists)
-if [ -d "$HOME/projects" ] && [ ! -L "$HOME/projects" ]; then
-  rm -rf "$HOME/projects"
-fi
-ln -sfn "$WIN_PROJECTS" "$HOME/projects"
+echo "==> Creating projects directory"
+mkdir -p "$HOME/projects/workspace"
 
 echo "==> Installing jq"
 if ! command -v jq &>/dev/null; then
