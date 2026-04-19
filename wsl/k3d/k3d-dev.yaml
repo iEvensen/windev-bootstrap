@@ -20,6 +20,9 @@ ports:
   - port: 8443:443
     nodeFilters:
       - loadbalancer
+  - port: 9000:9000
+    nodeFilters:
+      - loadbalancer
 volumes:
   - volume: /var/lib/k3d/dev:/var/lib/rancher/k3s/storage
     nodeFilters:
