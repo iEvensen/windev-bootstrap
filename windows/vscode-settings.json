@@ -1,5 +1,8 @@
 {
   "editor.fontFamily": "Fira Code, Consolas, 'Courier New', monospace",
   "editor.fontLigatures": true,
-  "terminal.integrated.defaultProfile.windows": "PowerShell"
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "github.copilot.advanced": {
+    "debug.useNodeFetcher": true
+  }
 }

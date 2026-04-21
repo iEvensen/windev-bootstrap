@@ -8,5 +8,8 @@
     }
   },
   "go.toolsManagement.autoUpdate": true,
-  "yaml.validate": true
+  "yaml.validate": true,
+  "github.copilot.advanced": {
+    "debug.useNodeFetcher": true
+  }
 }
