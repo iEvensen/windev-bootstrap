@@ -34,6 +34,7 @@ cd windev-bootstrap\windows
 ```
 
 The script prompts for:
+
 - WSL username and password
 - GitHub Personal Access Token
 - SSH setup (optional, default: HTTPS)
@@ -41,7 +42,46 @@ The script prompts for:
 
 Everything else is automatic.
 
-### 3. Use Dev Containers
+### 3. Optional: Rider/Testcontainers without Docker Desktop
+
+If you want Rider on Windows to connect to Docker Engine running inside WSL, use the optional helper script:
+
+```bash
+cd ~/windev-bootstrap
+chmod +x wsl/docker/enable-rider-remote-daemon.sh
+./wsl/docker/enable-rider-remote-daemon.sh
+```
+
+To disable this and restore default Docker service behavior:
+
+```bash
+./wsl/docker/disable-rider-remote-daemon.sh
+```
+
+The script configures Docker to listen on TCP port `2375` in addition to the Unix socket, without overwriting existing Docker network settings in `daemon.json`.
+
+Default behavior is security-first:
+
+- Binds to `127.0.0.1` by default
+- For non-loopback binds, applies an `iptables` source restriction when possible
+
+Security note:
+
+- Port `2375` is unauthenticated and unencrypted (no TLS)
+- Use this only for local development on trusted networks
+- To bind to a specific non-loopback address and restrict source to your Windows host, run:
+
+```bash
+./wsl/docker/enable-rider-remote-daemon.sh --bind <wsl-ip> --allow-from <windows-ip>
+```
+
+- To bind on all interfaces (least secure), run:
+
+```bash
+./wsl/docker/enable-rider-remote-daemon.sh --bind-all --allow-insecure-public-bind
+```
+
+### 4. Use Dev Containers
 
 Copy a template into your project:
 
@@ -53,7 +93,7 @@ Then open the folder in VS Code and select **"Reopen in Container"**.
 
 ## Structure
 
-```
+```text
 windev-bootstrap/
   windows/
     install.ps1              # Main entry point — runs everything
@@ -68,6 +108,8 @@ windev-bootstrap/
     docker/
       daemon.json            # Docker networking config
       network-setup.sh       # Restart Docker & verify
+      enable-rider-remote-daemon.sh # Optional Rider/Testcontainers TCP endpoint helper
+      disable-rider-remote-daemon.sh # Optional helper to revert Rider/Testcontainers TCP endpoint
     k3d/
       k3d-dev.yaml           # Declarative k3d cluster config
       k3d-dev-cluster.service # Systemd service for auto-start on boot
@@ -91,7 +133,7 @@ windev-bootstrap/
 
 ## VS Code Settings Inheritance
 
-```
+```text
 vscode/settings.json (single source of truth)
 ├── Windows host   → merged into %APPDATA%\Code\User\settings.json
 ├── WSL distro     → copied to ~/.vscode-server/data/Machine/settings.json
