@@ -42,6 +42,19 @@ The script prompts for:
 
 Everything else is automatic.
 
+Optional unattended toggle:
+
+- Set `INSTALL_PORTAINER=true` before running `windows/install.ps1` to install Portainer during bootstrap.
+- If not set, Portainer remains an opt-in manual step.
+
+Example:
+
+```powershell
+$env:INSTALL_PORTAINER = "true"
+cd windev-bootstrap\windows
+.\install.ps1
+```
+
 ### 3. Optional: Rider/Testcontainers without Docker Desktop
 
 If you want Rider on Windows to connect to Docker Engine running inside WSL, use the optional helper script:
@@ -81,7 +94,35 @@ Security note:
 ./wsl/docker/enable-rider-remote-daemon.sh --bind-all --allow-insecure-public-bind
 ```
 
-### 4. Use Dev Containers
+### 4. Optional: Portainer (Docker GUI)
+
+Install Portainer for the local Docker Engine in WSL:
+
+```bash
+cd ~/windev-bootstrap
+./wsl/docker/install-portainer.sh
+```
+
+Open Portainer at:
+
+```text
+https://localhost:9443
+```
+
+Notes:
+
+- Uses `9443` intentionally because `9000` is already used by k3d/Traefik in this setup
+- Binds to `127.0.0.1` only (not exposed on your LAN)
+
+Optional: allow Portainer to manage the local k3d cluster too:
+
+```bash
+./wsl/docker/prepare-portainer-k3d-access.sh
+```
+
+Then import the generated kubeconfig file in Portainer's Kubernetes environment wizard.
+
+### 5. Use Dev Containers
 
 Copy a template into your project:
 
@@ -110,6 +151,8 @@ windev-bootstrap/
       network-setup.sh       # Restart Docker & verify
       enable-rider-remote-daemon.sh # Optional Rider/Testcontainers TCP endpoint helper
       disable-rider-remote-daemon.sh # Optional helper to revert Rider/Testcontainers TCP endpoint
+      install-portainer.sh   # Optional Portainer CE install/start (Docker GUI)
+      prepare-portainer-k3d-access.sh # Optional kubeconfig generator for Portainer -> k3d
     k3d/
       k3d-dev.yaml           # Declarative k3d cluster config
       k3d-dev-cluster.service # Systemd service for auto-start on boot

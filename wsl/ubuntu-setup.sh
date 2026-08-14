@@ -33,7 +33,7 @@ else
   sudo dockerd &>/dev/null &
 fi
 echo "    Waiting for Docker daemon..."
-for i in $(seq 1 30); do
+for _ in $(seq 1 30); do
   sudo docker info &>/dev/null && break
   sleep 1
 done
@@ -198,6 +198,13 @@ echo "==> Applying VS Code settings for Remote-WSL"
 VSCODE_MACHINE_DIR="$HOME/.vscode-server/data/Machine"
 mkdir -p "$VSCODE_MACHINE_DIR"
 cp "$REPO_ROOT/vscode/settings.json" "$VSCODE_MACHINE_DIR/settings.json"
+
+if [[ "${INSTALL_PORTAINER:-false}" =~ ^([Tt][Rr][Uu][Ee]|[Yy]([Ee][Ss])?|1)$ ]]; then
+  echo "==> INSTALL_PORTAINER is enabled, installing Portainer"
+  bash "$REPO_ROOT/wsl/docker/install-portainer.sh"
+else
+  echo "==> INSTALL_PORTAINER is disabled, skipping Portainer install"
+fi
 
 echo "==> Installing VS Code extensions in WSL"
 if command -v code &>/dev/null; then

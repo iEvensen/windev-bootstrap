@@ -35,6 +35,11 @@ if ($SetupSSH -match '^[Yy]') {
     $env:SETUP_SSH = "false"
 }
 
+# Optional unattended toggle: set INSTALL_PORTAINER=true before running install.ps1
+if (-not $env:INSTALL_PORTAINER -or [string]::IsNullOrWhiteSpace($env:INSTALL_PORTAINER)) {
+    $env:INSTALL_PORTAINER = "false"
+}
+
 $UseInternal = Read-Host "Use internal corporate registry for container images? (y/N)"
 $UseInternalRegistry = $UseInternal -match '^[Yy]'
 
@@ -51,7 +56,7 @@ $PlainToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR_GH
 $env:WSL_USER = $WSL_USER
 $env:WSL_PASS = $PlainPass
 $env:GH_PAT = $PlainToken
-$env:WSLENV = "WSL_USER/u:WSL_PASS/u:GH_PAT/u:SETUP_SSH/u"
+$env:WSLENV = "WSL_USER/u:WSL_PASS/u:GH_PAT/u:SETUP_SSH/u:INSTALL_PORTAINER/u"
 
 # --- Helper: get non-public corporate root CA certificates ---
 $KnownPublicCAs = @("Microsoft","Comodo","DigiCert","GlobalSign","VeriSign","ISRG",
@@ -310,7 +315,7 @@ if (Test-Path $wslHome) {
     }
 
     # Make scripts executable
-    wsl -d $DistroName -u $WSL_USER bash -c 'chmod +x ~/windev-bootstrap/wsl/install.sh ~/windev-bootstrap/wsl/ubuntu-setup.sh ~/windev-bootstrap/github/setup-github.sh ~/windev-bootstrap/wsl/k3d/create-cluster.sh ~/windev-bootstrap/wsl/docker/network-setup.sh'
+    wsl -d $DistroName -u $WSL_USER bash -c 'chmod +x ~/windev-bootstrap/wsl/install.sh ~/windev-bootstrap/wsl/ubuntu-setup.sh ~/windev-bootstrap/github/setup-github.sh ~/windev-bootstrap/wsl/k3d/create-cluster.sh ~/windev-bootstrap/wsl/docker/network-setup.sh ~/windev-bootstrap/wsl/docker/enable-rider-remote-daemon.sh ~/windev-bootstrap/wsl/docker/disable-rider-remote-daemon.sh ~/windev-bootstrap/wsl/docker/install-portainer.sh ~/windev-bootstrap/wsl/docker/prepare-portainer-k3d-access.sh'
     if ($LASTEXITCODE -ne 0) { Write-Error "Failed to make scripts executable."; exit 1 }
 
     # Shutdown WSL so systemd boots as PID 1 on next launch
