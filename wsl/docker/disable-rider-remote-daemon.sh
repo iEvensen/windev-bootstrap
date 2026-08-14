@@ -37,12 +37,12 @@ fi
 echo "==> Reloading systemd"
 sudo systemctl daemon-reload
 
-echo "==> Unmasking and re-enabling docker.socket"
-sudo systemctl unmask docker.socket >/dev/null 2>&1 || true
+echo "==> Re-enabling docker.socket"
 sudo systemctl enable docker.socket >/dev/null 2>&1 || true
 sudo systemctl start docker.socket >/dev/null 2>&1 || true
 
 echo "==> Restarting docker.service"
+sudo systemctl reset-failed docker.service >/dev/null 2>&1 || true
 sudo systemctl restart docker.service
 
 if command -v iptables >/dev/null 2>&1; then

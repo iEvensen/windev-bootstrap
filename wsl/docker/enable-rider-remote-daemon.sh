@@ -175,8 +175,12 @@ sudo mv "${DAEMON_JSON}.tmp" "$DAEMON_JSON"
 echo "==> Creating systemd override directory"
 sudo mkdir -p /etc/systemd/system/docker.service.d
 
-echo "==> Writing docker.service override (strips -H fd:// to avoid socket-activation conflict)"
+echo "==> Writing docker.service override (strips -H fd:// and removes socket dependency)"
 cat <<'EOF' | sudo tee /etc/systemd/system/docker.service.d/override.conf >/dev/null
+[Unit]
+After=network-online.target containerd.service
+Wants=network-online.target
+
 [Service]
 ExecStart=
 ExecStart=/usr/bin/dockerd --containerd=/run/containerd/containerd.sock
@@ -185,9 +189,9 @@ EOF
 echo "==> Reloading systemd"
 sudo systemctl daemon-reload
 
-echo "==> Stopping and masking docker.socket to avoid host flag conflicts"
+echo "==> Stopping and disabling docker.socket"
 sudo systemctl stop docker.socket >/dev/null 2>&1 || true
-sudo systemctl mask docker.socket >/dev/null 2>&1 || true
+sudo systemctl disable docker.socket >/dev/null 2>&1 || true
 
 if [[ "$BIND_IP" != "127.0.0.1" ]]; then
   if command -v iptables >/dev/null 2>&1 && [[ -n "$ALLOW_FROM" ]]; then
@@ -205,7 +209,8 @@ if [[ "$BIND_IP" != "127.0.0.1" ]]; then
   fi
 fi
 
-echo "==> Restarting docker.service"
+echo "==> Starting docker.service"
+sudo systemctl reset-failed docker.service >/dev/null 2>&1 || true
 sudo systemctl restart docker.service
 
 echo "==> Validating service"
