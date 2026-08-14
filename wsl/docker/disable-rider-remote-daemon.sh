@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Companion helper for enable-rider-remote-daemon.sh.
-# Removes the Docker systemd override, restarts Docker, and removes INPUT iptables
-# rules for TCP port 2375 that may have been added by the enable helper.
+# Removes the Docker systemd override, removes the 'hosts' key from daemon.json,
+# restarts Docker, unmasks docker.socket, and removes iptables rules for port 2375.
 
 echo "==> Disable Rider/Testcontainers Docker TCP endpoint (WSL2)"
 
@@ -18,6 +18,7 @@ if ! command -v systemctl >/dev/null 2>&1; then
 fi
 
 OVERRIDE_FILE="/etc/systemd/system/docker.service.d/override.conf"
+DAEMON_JSON="/etc/docker/daemon.json"
 
 echo "==> Removing docker.service override (if present)"
 if [[ -f "$OVERRIDE_FILE" ]]; then
@@ -26,13 +27,20 @@ else
   echo "    No override file found at $OVERRIDE_FILE"
 fi
 
+echo "==> Removing 'hosts' key from ${DAEMON_JSON} (if present)"
+if [[ -f "$DAEMON_JSON" ]]; then
+  CURRENT_JSON="$(sudo cat "$DAEMON_JSON")"
+  echo "$CURRENT_JSON" | jq 'del(.hosts)' | sudo tee "${DAEMON_JSON}.tmp" >/dev/null
+  sudo mv "${DAEMON_JSON}.tmp" "$DAEMON_JSON"
+fi
+
 echo "==> Reloading systemd"
 sudo systemctl daemon-reload
 
-echo "==> Re-enabling docker.socket (best effort)"
+echo "==> Unmasking and re-enabling docker.socket"
 sudo systemctl unmask docker.socket >/dev/null 2>&1 || true
 sudo systemctl enable docker.socket >/dev/null 2>&1 || true
-sudo systemctl restart docker.socket >/dev/null 2>&1 || true
+sudo systemctl start docker.socket >/dev/null 2>&1 || true
 
 echo "==> Restarting docker.service"
 sudo systemctl restart docker.service

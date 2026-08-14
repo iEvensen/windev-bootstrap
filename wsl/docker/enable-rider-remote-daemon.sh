@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # Optional helper for Rider/Testcontainers users running Docker Engine inside WSL.
-# This does NOT change /etc/docker/daemon.json, so existing Docker network settings are preserved.
+# Merges the 'hosts' key into /etc/docker/daemon.json (preserving all other settings).
+# Masks docker.socket and uses a minimal systemd override to strip the default -H fd:// flag.
 
 BIND_IP="127.0.0.1"
 BIND_ALL="false"
@@ -117,6 +118,11 @@ if ! command -v dockerd >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v jq >/dev/null 2>&1; then
+  echo "jq not found. Install jq first: sudo apt install -y jq"
+  exit 1
+fi
+
 if [[ "$BIND_ALL" == "true" ]]; then
   if [[ "$ALLOW_INSECURE_PUBLIC_BIND" != "true" ]]; then
     echo "ERROR: --bind-all requires --allow-insecure-public-bind."
@@ -155,21 +161,33 @@ if [[ "$BIND_IP" != "127.0.0.1" ]]; then
   fi
 fi
 
+DAEMON_JSON="/etc/docker/daemon.json"
+echo "==> Merging hosts into ${DAEMON_JSON}"
+if [[ ! -f "$DAEMON_JSON" ]]; then
+  echo '{}' | sudo tee "$DAEMON_JSON" >/dev/null
+fi
+NEW_HOSTS="[\"unix:///var/run/docker.sock\", \"tcp://${BIND_IP}:2375\"]"
+CURRENT_JSON="$(sudo cat "$DAEMON_JSON")"
+echo "$CURRENT_JSON" | jq --argjson hosts "$NEW_HOSTS" '. + {hosts: $hosts}' | \
+  sudo tee "${DAEMON_JSON}.tmp" >/dev/null
+sudo mv "${DAEMON_JSON}.tmp" "$DAEMON_JSON"
+
 echo "==> Creating systemd override directory"
 sudo mkdir -p /etc/systemd/system/docker.service.d
 
-echo "==> Writing docker.service override"
-cat <<EOF | sudo tee /etc/systemd/system/docker.service.d/override.conf >/dev/null
+echo "==> Writing docker.service override (strips -H fd:// to avoid socket-activation conflict)"
+cat <<'EOF' | sudo tee /etc/systemd/system/docker.service.d/override.conf >/dev/null
 [Service]
 ExecStart=
-ExecStart=/usr/bin/dockerd --containerd=/run/containerd/containerd.sock --host=unix:///var/run/docker.sock --host=tcp://${BIND_IP}:2375
+ExecStart=/usr/bin/dockerd --containerd=/run/containerd/containerd.sock
 EOF
 
 echo "==> Reloading systemd"
 sudo systemctl daemon-reload
 
-echo "==> Disabling docker.socket to avoid host flag conflicts"
-sudo systemctl disable --now docker.socket >/dev/null 2>&1 || true
+echo "==> Stopping and masking docker.socket to avoid host flag conflicts"
+sudo systemctl stop docker.socket >/dev/null 2>&1 || true
+sudo systemctl mask docker.socket >/dev/null 2>&1 || true
 
 if [[ "$BIND_IP" != "127.0.0.1" ]]; then
   if command -v iptables >/dev/null 2>&1 && [[ -n "$ALLOW_FROM" ]]; then
