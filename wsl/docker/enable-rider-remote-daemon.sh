@@ -190,6 +190,7 @@ echo "==> Reloading systemd"
 sudo systemctl daemon-reload
 
 echo "==> Stopping and disabling docker.socket"
+sudo systemctl unmask docker.socket >/dev/null 2>&1 || true
 sudo systemctl stop docker.socket >/dev/null 2>&1 || true
 sudo systemctl disable docker.socket >/dev/null 2>&1 || true
 

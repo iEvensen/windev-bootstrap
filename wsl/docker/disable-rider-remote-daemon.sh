@@ -38,6 +38,7 @@ echo "==> Reloading systemd"
 sudo systemctl daemon-reload
 
 echo "==> Re-enabling docker.socket"
+sudo systemctl unmask docker.socket >/dev/null 2>&1 || true
 sudo systemctl enable docker.socket >/dev/null 2>&1 || true
 sudo systemctl start docker.socket >/dev/null 2>&1 || true
 
