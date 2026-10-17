@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+source "$REPO_ROOT/lib/network.sh"
+
 # Install or start Portainer CE for the local Docker Engine inside WSL.
 # This keeps Portainer independent from k3d lifecycle and avoids exposing it publicly.
 
@@ -30,7 +33,7 @@ sudo mkdir -p "$PORTAINER_DATA_DIR"
 sudo chown "$USER":"$USER" "$PORTAINER_DATA_DIR"
 
 echo "==> Pulling Portainer image"
-docker pull "$PORTAINER_IMAGE"
+retry_download docker pull "$PORTAINER_IMAGE"
 
 if docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
   echo "==> Existing container '$CONTAINER_NAME' found"

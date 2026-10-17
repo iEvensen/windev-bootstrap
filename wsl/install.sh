@@ -2,6 +2,7 @@
 set -euo pipefail
 
 REPO_ROOT="${REPO_ROOT:-$HOME/windev-bootstrap}"
+source "$REPO_ROOT/lib/network.sh"
 
 # --- Install corporate CA certificates (if present in certs/) ---
 CERT_DIR="$REPO_ROOT/certs"
@@ -65,7 +66,7 @@ if dpkg --compare-versions "$(lsb_release -rs)" ge 25.10; then
   MICROSOFT_KEY_URL="https://packages.microsoft.com/keys/microsoft-2025.asc"
 fi
 sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL "$MICROSOFT_KEY_URL" | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg > /dev/null
+download "$MICROSOFT_KEY_URL" | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg > /dev/null
 sudo chmod a+r /etc/apt/keyrings/microsoft.gpg
 if [ ! -f /etc/apt/sources.list.d/microsoft-prod.list ]; then
   echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" | \
@@ -86,20 +87,20 @@ else
 fi
 
 echo "==> Updating apt"
-sudo apt update
+apt_get update
 
 # Hold Ubuntu-packaged dotnet to avoid upgrade failures (dotnet is managed via install scripts)
 dpkg -l 'dotnet*' 'aspnetcore*' 2>/dev/null | awk '/^ii/ {print $2}' | xargs -r sudo apt-mark hold 2>/dev/null || true
 
 echo "==> Upgrading packages"
-sudo apt upgrade -y || {
+apt_get upgrade -y || {
   echo "    apt upgrade failed, retrying with --fix-missing..."
-  sudo apt update
-  sudo apt upgrade -y --fix-missing || echo "    WARNING: apt upgrade failed; continuing with existing packages"
+  apt_get update
+  apt_get upgrade -y --fix-missing || echo "    WARNING: apt upgrade failed; continuing with existing packages"
 }
 
 echo "==> Installing base packages"
-sudo apt install -y \
+apt_get install -y \
   ca-certificates curl gnupg lsb-release \
   git build-essential unzip tar \
   apt-transport-https software-properties-common

@@ -200,6 +200,15 @@ When you select **internal corporate registry** during setup:
 
 To manually add certificates, place `.crt` files in `certs/` before running setup.
 
+## Network Resilience
+
+- APT downloads retry up to three times with 30-second HTTP/HTTPS timeouts. Repository refreshes fail if any source cannot be updated.
+- Direct HTTPS downloads retry up to three times, with a 15-second connection timeout, a 120-second transfer timeout, and a 180-second retry budget. Content is consumed only after a successful download.
+- Direct Git clones, Docker pulls, Node installs, and extension installs retry up to three times. Windows distro, package, extension, and font downloads also use bounded retries.
+- Certificate and repository signature verification remain enabled. Exhausted retries report failures; third-party installer scripts control their own internal download behavior.
+
+Run offline retry checks with `bash tests/network.sh` and `powershell -File tests/network.Tests.ps1`.
+
 ## Idempotency
 
 The script is safe to re-run at any time:

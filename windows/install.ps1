@@ -3,6 +3,28 @@ Param(
     [string]$DistroName = "Ubuntu"
 )
 
+function Invoke-NetworkRetry {
+    param(
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$Operation,
+        [switch]$NativeCommand
+    )
+
+    for ($attempt = 1; $attempt -le 4; $attempt++) {
+        try {
+            & $Operation
+            if ($NativeCommand -and $LASTEXITCODE -ne 0) {
+                throw "Download command failed with exit code $LASTEXITCODE."
+            }
+            return
+        } catch {
+            if ($attempt -eq 4) { throw }
+            Write-Warning "Download failed; retrying ($attempt/3)..."
+            Start-Sleep -Seconds 2
+        }
+    }
+}
+
 Set-Variable -Name __PSLockdownPolicy -Value 0 -Scope Global -Force -ErrorAction SilentlyContinue
 $ExecutionContext.SessionState.LanguageMode = "FullLanguage"
 
@@ -102,7 +124,7 @@ if ($installedDistros -contains $DistroName) {
     Write-Host "`n==> $DistroName distro already installed, skipping download."
 } else {
     Write-Host "`n==> Installing $DistroName distro"
-    wsl --install -d $DistroName --no-launch
+    Invoke-NetworkRetry -NativeCommand -Operation { wsl --install -d $DistroName --no-launch }
     if ($LASTEXITCODE -ne 0) { Write-Error "Failed to install $DistroName distro."; exit 1 }
 }
 
@@ -128,7 +150,9 @@ wsl --terminate $DistroName
 
 # --- Winget packages ---
 Write-Host "`n==> Installing packages via winget"
-winget import .\winget-packages.json --accept-package-agreements --accept-source-agreements --disable-interactivity --no-upgrade
+Invoke-NetworkRetry -NativeCommand -Operation {
+    winget import .\winget-packages.json --accept-package-agreements --accept-source-agreements --disable-interactivity --no-upgrade
+}
 
 # --- JetBrainsMono Nerd Font ---
 Write-Host "`n==> Installing JetBrainsMono Nerd Font"
@@ -147,7 +171,9 @@ if ($fontAlreadyInstalled) {
     $fontRegPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
 
     try {
-        Invoke-WebRequest -Uri $fontUrl -OutFile $fontZip -UseBasicParsing
+        Invoke-NetworkRetry -Operation {
+            Invoke-WebRequest -Uri $fontUrl -OutFile $fontZip -UseBasicParsing -TimeoutSec 120 -ErrorAction Stop
+        }
         if (Test-Path $fontExtract) { Remove-Item $fontExtract -Recurse -Force }
         Expand-Archive -Path $fontZip -DestinationPath $fontExtract -Force
 
@@ -178,8 +204,8 @@ $env:USERPROFILE = $OriginalUserProfile
 $env:APPDATA = $OriginalAppData
 $env:LOCALAPPDATA = $OriginalLocalAppData
 
-code --install-extension ms-vscode-remote.remote-wsl --force
-code --install-extension ms-vscode-remote.remote-containers --force
+Invoke-NetworkRetry -NativeCommand -Operation { code --install-extension ms-vscode-remote.remote-wsl --force }
+Invoke-NetworkRetry -NativeCommand -Operation { code --install-extension ms-vscode-remote.remote-containers --force }
 
 $env:USERPROFILE = $savedUserProfile
 $env:APPDATA = $savedAppData

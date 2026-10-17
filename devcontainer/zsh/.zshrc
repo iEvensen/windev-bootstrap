@@ -20,10 +20,20 @@ typeset -A custom_plugins=(
 
 for plugin repo in "${(@kv)custom_plugins}"; do
   if [[ ! -d "$ZSH_CUSTOM/plugins/$plugin" ]]; then
-    git clone --depth=1 "$repo" "$ZSH_CUSTOM/plugins/$plugin" 2>/dev/null
+    for attempt in 1 2 3 4; do
+      if git clone --depth=1 "$repo" "$ZSH_CUSTOM/plugins/$plugin"; then
+        break
+      fi
+      if (( attempt == 4 )); then
+        print -u2 "Failed to download plugin: $plugin"
+      else
+        print -u2 "Plugin download failed; retrying ($attempt/3)..."
+        sleep 2
+      fi
+    done
   fi
 done
-unset custom_plugins
+unset custom_plugins attempt
 
 plugins=(
   git
