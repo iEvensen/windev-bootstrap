@@ -27,6 +27,10 @@ Bootstrap a Windows + WSL2 (Ubuntu) development environment from a single script
 
 ### 2. Run the bootstrap
 
+``` powershell
+Set-ExecutionPolicy Unrestricted
+```
+
 ```powershell
 git clone https://github.com/iEvensen/windev-bootstrap.git
 cd windev-bootstrap\windows
