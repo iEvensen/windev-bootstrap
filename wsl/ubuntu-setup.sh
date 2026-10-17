@@ -15,7 +15,7 @@ echo \
 sudo apt update
 
 echo "==> Docker: installing engine"
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin util-linux-extra
 
 echo "==> Adding user to docker group"
 sudo usermod -aG docker "$USER"
