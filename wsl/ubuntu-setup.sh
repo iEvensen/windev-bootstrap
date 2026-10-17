@@ -85,10 +85,10 @@ fi
 echo "==> Installing Azure CLI"
 if ! command -v az &>/dev/null; then
   sudo mkdir -p /etc/apt/keyrings
-  curl -sLS https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg > /dev/null
-  sudo chmod go+r /etc/apt/keyrings/microsoft.gpg
+  curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/azure-cli.gpg > /dev/null
+  sudo chmod a+r /etc/apt/keyrings/azure-cli.gpg
   AZ_REPO="$(lsb_release -cs)"
-  echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ ${AZ_REPO} main" | \
+  echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/azure-cli.gpg] https://packages.microsoft.com/repos/azure-cli/ ${AZ_REPO} main" | \
     sudo tee /etc/apt/sources.list.d/azure-cli.list > /dev/null
   sudo apt-get update -y
   sudo apt-get install -y --no-install-recommends azure-cli

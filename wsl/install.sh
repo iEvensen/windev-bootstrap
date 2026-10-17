@@ -60,8 +60,14 @@ done
 
 # --- Add Microsoft .NET package repository (alternative mirror) ---
 echo "==> Adding Microsoft package repository"
+MICROSOFT_KEY_URL="https://packages.microsoft.com/keys/microsoft.asc"
+if dpkg --compare-versions "$(lsb_release -rs)" ge 25.10; then
+  MICROSOFT_KEY_URL="https://packages.microsoft.com/keys/microsoft-2025.asc"
+fi
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL "$MICROSOFT_KEY_URL" | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg > /dev/null
+sudo chmod a+r /etc/apt/keyrings/microsoft.gpg
 if [ ! -f /etc/apt/sources.list.d/microsoft-prod.list ]; then
-  curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg > /dev/null
   echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" | \
     sudo tee /etc/apt/sources.list.d/microsoft-prod.list > /dev/null
   # Keep Microsoft low priority for most packages, but allow dotnet fallback
