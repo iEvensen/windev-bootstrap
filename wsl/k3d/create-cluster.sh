@@ -11,5 +11,7 @@ fi
 
 # Enable Traefik dashboard on the traefik entrypoint (port 9000)
 kubectl apply -f "$REPO_ROOT/wsl/k3d/traefik-config.yaml"
+echo "Waiting for k3s to create the Traefik deployment..."
+kubectl wait --for=create deployment/traefik -n kube-system --timeout=180s
 echo "Waiting for Traefik to redeploy with dashboard enabled..."
 kubectl rollout status deploy/traefik -n kube-system --timeout=120s
